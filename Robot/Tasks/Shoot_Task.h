@@ -10,7 +10,7 @@
 #define SHOOT_CAN hcan1
 #define fric_15m 1500 //13.7
 
-#define fric_18m 1650//22
+#define fric_18m 1670//22
 #define fric_30m 1730//1690
 
 typedef struct

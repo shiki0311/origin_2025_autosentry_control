@@ -37,13 +37,13 @@
 
 float yaw_pid_rate=0.3f;//0.3f
 
-#define YAW_MOTOR_AUTO_AIM_PID_KP 13.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KP 20.0f
 #define YAW_MOTOR_AUTO_AIM_PID_KI 0.003f
-#define YAW_MOTOR_AUTO_AIM_PID_KD 20.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KD 100.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 80.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 30.0f
 
-#define PITCH_MOTOR_SPEED_PID_KP 4.0f
+#define PITCH_MOTOR_SPEED_PID_KP 6.0f
 #define PITCH_MOTOR_SPEED_PID_KI 0.0001f
 #define PITCH_MOTOR_SPEED_PID_KD 80.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_OUT 20.0f
@@ -58,7 +58,7 @@ float yaw_pid_rate=0.3f;//0.3f
 float pitch_pid_rate=0.25f;
 #define PITCH_MOTOR_AUTO_AIM_PID_KP 0.25f
 #define PITCH_MOTOR_AUTO_AIM_PID_KI 0.000f//0.0005f
-#define PITCH_MOTOR_AUTO_AIM_PID_KD 0.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_KD 30.0f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 2.5f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 100.0f
 
@@ -214,7 +214,7 @@ void Yaw_Motor_Control(void)
 	auto_aim_tracking=AutoAim_Data_Receive.track;
 	
 ////	开启自瞄的两种方法：1、不开导航的情况下开自瞄  2、开启导航和自瞄
-	if((rc_ctrl.rc.s[1]==RC_SW_MID&&auto_aim_tracking)||(rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))
+	if((auto_aim_tracking)||(rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))
 	{		  
 		yaw_angle_err = AutoAim_Data_Receive.yaw_aim-gimbal_m6020[0].INS_angle;
 		if(yaw_angle_err>180)
@@ -292,14 +292,14 @@ void Pitch_Motor_Control(void)
 //	}
 	
 	//开自瞄 
-	if((rc_ctrl.rc.s[1]==RC_SW_MID&&auto_aim_tracking) || (rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))  
+	if((auto_aim_tracking) || (rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))  
 	{  
 		
 //		pitch_angle_err=auto_aim_pitch_exp-gimbal_m6020[2].INS_angle;
-		pitch_angle_err=AutoAim_Data_Receive.pitch_aim-gimbal_m6020[2].INS_angle;
-		PID_calc(&DM_pitch_motor_data.auto_aim_pid,DM_pitch_motor_data.INS_angle,AutoAim_Data_Receive.pitch_aim);
+		pitch_angle_err=(-AutoAim_Data_Receive.pitch_aim)-DM_pitch_motor_data.INS_angle;
+		PID_calc(&DM_pitch_motor_data.auto_aim_pid,pitch_angle_err,0);
 
-		DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.auto_aim_pid.out;
+		DM_pitch_motor_data.INS_speed_set=-DM_pitch_motor_data.auto_aim_pid.out;
 		DM_pitch_motor_data.INS_angle_set=AutoAim_Data_Receive.pitch_aim;
 		
 		pitch_mode=pitch_mode_last=1;
@@ -524,7 +524,9 @@ void Gimbal_Task(void const * argument)
 		else
 		{
 			CAN_Gimbal_CMD(gimbal_m6020[0].give_current,shoot_m2006[0].give_current,0,0);	
+//			CAN_Gimbal_CMD(0,shoot_m2006[0].give_current,0,0);
 			ctrl_motor(DM4310_ID, 0, 0,0, 0, DM_pitch_motor_data.target_current);
+//			ctrl_motor(DM4310_ID, 0, 0,0, 0, 0);
 		}
 
 //	Vofa_Send_Data4(gimbal_m6020[0].angle_pid.set,gimbal_m6020[0].angle_pid.out,gimbal_m6020[0].speed_pid.set,gimbal_m6020[0].speed_pid.out);

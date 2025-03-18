@@ -16,8 +16,8 @@
 #define ROTATE_VX_MAX 3000
 #define ROTATE_VY_MAX 3000
 //#define ROTATE_WZ_MAX 25000
-#define ROTATE_WZ_MAX 30000
-#define ROTATE_WZ_MIN -30000
+#define ROTATE_WZ_MAX 22000
+#define ROTATE_WZ_MIN -22000
 
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 4450
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO 6498
@@ -191,41 +191,41 @@ void power_control()
 		init_chassis_power += initial_give_power[i];
 	}
 	
-//	if (init_chassis_power > chassis_power_limit_rmul)
-//	{
-//		fp32 power_scale = chassis_power_limit_rmul / init_chassis_power;
-//		for (uint8_t i = 0; i < 4; i++)
-//		{
-//			scaled_give_power[i] = initial_give_power[i] * power_scale; // 按功率比例等比缩一下
-//			if (scaled_give_power[i] < 0)
-//			{
-//				continue;
-//			}
-//			fp32 b = toque_coefficient * chassis_m3508[i].speed;
-//			fp32 c = k2 * chassis_m3508[i].speed * chassis_m3508[i].speed - scaled_give_power[i] + constant;
-//			
-//			if(chassis_m3508[i].give_current > 0)			//模型会解出两个解，根据pid算出的电流正负，来选择解
-//			{
-//				fp32 temp = (-b + sqrt(b * b - 4 * k1 * c)) / (2 * k1);
-//				if (temp > 16000)
-//				{
-//					chassis_m3508[i].give_current = 16000;
-//				}
-//				else
-//					chassis_m3508[i].give_current = temp;
-//			}
-//			else
-//			{
-//				fp32 temp = (-b - sqrt(b * b - 4 * k1 * c)) / (2 * k1);
-//				if (temp < -16000)
-//				{
-//					chassis_m3508[i].give_current = -16000;
-//				}
-//				else
-//					chassis_m3508[i].give_current = temp;
-//			}
-//		}
-//	}
+	if (init_chassis_power > chassis_power_limit_rmul)
+	{
+		fp32 power_scale = chassis_power_limit_rmul / init_chassis_power;
+		for (uint8_t i = 0; i < 4; i++)
+		{
+			scaled_give_power[i] = initial_give_power[i] * power_scale; // 按功率比例等比缩一下
+			if (scaled_give_power[i] < 0)
+			{
+				continue;
+			}
+			fp32 b = toque_coefficient * chassis_m3508[i].speed;
+			fp32 c = k2 * chassis_m3508[i].speed * chassis_m3508[i].speed - scaled_give_power[i] + constant;
+			
+			if(chassis_m3508[i].give_current > 0)			//模型会解出两个解，根据pid算出的电流正负，来选择解
+			{
+				fp32 temp = (-b + sqrt(b * b - 4 * k1 * c)) / (2 * k1);
+				if (temp > 16000)
+				{
+					chassis_m3508[i].give_current = 16000;
+				}
+				else
+					chassis_m3508[i].give_current = temp;
+			}
+			else
+			{
+				fp32 temp = (-b - sqrt(b * b - 4 * k1 * c)) / (2 * k1);
+				if (temp < -16000)
+				{
+					chassis_m3508[i].give_current = -16000;
+				}
+				else
+					chassis_m3508[i].give_current = temp;
+			}
+		}
+	}
 }
 
 void Chassis_Motor_Data_Update(void)
@@ -458,69 +458,6 @@ void chassis_vector_set(void)
 }
 
 
-void chassis_power_control(void)
-{	
-	float total_current_limit = 0.0f;
-	float total_current = 0.0f;
-	
-	if(chassis_power_limit==0) // 如果没有底盘功率限制：Game_Robot_State.chassis_power_limit=0
-	{
-		total_current_limit = NO_JUDGE_TOTAL_CURRENT_LIMIT;
-	}
-  else // 如果有底盘功率限制
-	{
-		if(chassis_power_buffer < WARNING_POWER_BUFF) // 如果动用了缓冲能量
-		{
-			float power_scale; //限制参数
-			if(chassis_power_buffer > 5.0f)
-			{
-					power_scale = chassis_power_buffer / WARNING_POWER_BUFF;
-			}
-			else
-			{
-					power_scale = 5.0f / WARNING_POWER_BUFF;
-			}
-			total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT * power_scale;}
-			
-		else // 缓冲能量充足
-		{
-			if(chassis_power > chassis_power_limit*0.75f) // 底盘目前功率有限制的75%以上
-			{
-				float power_scale;
-				if(chassis_power < chassis_power_limit) // 仍小于限制功率
-				{
-					power_scale = (chassis_power_limit - chassis_power) / (chassis_power_limit - chassis_power_limit*0.75f);	
-				}
-				else // 大于功率限制
-				{
-					power_scale = 0.0f; 
-				}
-				
-				total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT + POWER_TOTAL_CURRENT_LIMIT * power_scale; // 确定总限制
-			}
-			else // 底盘功率不到限制的75%
-			{
-				total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT + POWER_TOTAL_CURRENT_LIMIT;
-			}
-		}
-	}
-  total_current = 0.0f;
-  for(uint8_t i = 0; i < 4; i++)
-  {
-		total_current += fabs((float)chassis_m3508[i].give_current); // 总电流
-  }
-
-  if(total_current > total_current_limit) // 进行底盘每个电机的电流限制
-  {
-		float current_scale = total_current_limit / total_current;
-		chassis_m3508[0].give_current*=current_scale;
-		chassis_m3508[1].give_current*=current_scale;
-		chassis_m3508[2].give_current*=current_scale;
-		chassis_m3508[3].give_current*=current_scale;
-  }
-}
-
-
 void chassis_power_cap_control(void) // 哨兵不用超电
 {	
 	float total_current_limit = 0.0f;
@@ -698,7 +635,7 @@ void Chassis_Task(void const * argument)
 			{
 				chassis_feedback_update();
 				power_control();
-				chassis_power_control();
+//				chassis_power_control();
 //				chassis_power_cap_control();
 				CAN_Chassis_CMD(chassis_m3508[0].give_current,chassis_m3508[1].give_current,chassis_m3508[2].give_current,chassis_m3508[3].give_current);
 				//CAN_Chassis_CMD(0,0,0,0);

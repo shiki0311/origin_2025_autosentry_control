@@ -131,7 +131,7 @@ void Dial_Motor_Control(void)
 
 	}
 	
-	if(fric_state==1)  // 摩擦轮已开 拨弹盘可以转
+	if(shoot_flag==1)  // 摩擦轮已开 拨弹盘可以转
 	{
 		if(dial_mode==0)//continue 连发模式
 		{

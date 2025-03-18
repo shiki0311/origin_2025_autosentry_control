@@ -97,9 +97,9 @@ void Switch_Task(void const * argument)
 			//dial
 			if(dial_mode==0) // 连发
 			{
-				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID) //右开关在上且没有识别到目标：平时测试打弹
-					dial_speed=DIAL_SPEED_HIGH;
-				else if(AutoAim_Data_Receive.track != 0 && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // 右开关在上且识别到目标：平时测试自瞄
+//				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID) //右开关在上且没有识别到目标：平时测试打弹
+//					dial_speed=DIAL_SPEED_HIGH;
+				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // 右开关在上且识别到目标：平时测试自瞄
 					dial_speed=DIAL_SPEED_HIGH;
 				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0) // 左开关在上且识别到目标：比赛
 				{

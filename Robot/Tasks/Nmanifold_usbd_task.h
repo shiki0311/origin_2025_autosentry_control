@@ -147,15 +147,13 @@ typedef struct{
 typedef struct{
 	float yaw_aim;
 	float pitch_aim;
-	bool_t track;
 	bool_t fire_or_not;
+	bool_t track;
 	float vx;
 	float vy;
 	float rotate;
 	float yaw_speed;
-	float pitch_speed;
-	int armor_num;
-	
+	float pitch_speed;	
 }__attribute__((__packed__)) AutoAim_Data_Rx;//×ÔÃéÊı¾İ
 
 typedef struct{
