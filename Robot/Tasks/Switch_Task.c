@@ -8,7 +8,7 @@
 #include "SolveTrajectory.h"
 
 #define DIAL_SPEED_LOW  4500//3000
-#define DIAL_SPEED_HIGH 5500
+#define DIAL_SPEED_HIGH 5000
 
 
 RC_ctrl_t rc_ctrl_last;
@@ -80,8 +80,6 @@ void Switch_Task(void const * argument)
 		if((Game_Robot_State.power_management_shooter_output==0x01) && shoot_power_good_cnt<=20 ) 
 			shoot_power_good_cnt++;//delay 2000*2 ms 这里的延时有什么用？
 				
-		//if(((rc_ctrl.rc.s[0]==RC_SW_MID||rc_ctrl.rc.s[0]==RC_SW_UP)||rc_ctrl.rc.s[1]==RC_SW_UP)&&shoot_power_good_cnt>=2000) //摩擦轮缓慢启动完毕
-		//if(((rc_ctrl.rc.s[0]==RC_SW_MID||rc_ctrl.rc.s[0]==RC_SW_UP)||rc_ctrl.rc.s[1]==RC_SW_UP))
 			
 		if(((rc_ctrl.rc.s[1]==RC_SW_UP)||(rc_ctrl.rc.s[1]==RC_SW_MID))&&(shoot_power_good_cnt>=20)) //摩擦轮缓慢启动完毕
 		{
@@ -92,14 +90,15 @@ void Switch_Task(void const * argument)
 			fric_state=0;	
 		}
 
-		if(shoot_flag==1)//pwm值达到，可以转波蛋盘
+		if(shoot_flag==1)//摩擦轮转速达到，可以转波蛋盘
 		{
 			//dial
 			if(dial_mode==0) // 连发
 			{
 //				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID) //右开关在上且没有识别到目标：平时测试打弹
 //					dial_speed=DIAL_SPEED_HIGH;
-				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // 右开关在上且识别到目标：平时测试自瞄
+//				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // 右开关在上且识别到目标：平时测试自瞄
+				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID)
 					dial_speed=DIAL_SPEED_HIGH;
 				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0) // 左开关在上且识别到目标：比赛
 				{

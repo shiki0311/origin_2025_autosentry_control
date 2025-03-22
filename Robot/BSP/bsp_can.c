@@ -59,13 +59,14 @@ uint8_t rx_data2[8];
 uint8_t rx_data[8];
 motor_measure_t motor_measure_chassis[4];
 motor_measure_t motor_measure_gimbal[2];
-motor_measure_t motor_measure_shoot[2];
+motor_measure_t motor_measure_shoot[3];
 DM_motor_data_t DM_pitch_motor_data;  //´ïÃëpitch
 
 uint32_t id=0;
 bool_t flag_code[5]={1,1,1,1,1};
 int32_t dial_angle=0;
 CAN_RxHeaderTypeDef rx_header;
+CAN_RxHeaderTypeDef rx_header2;
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	if(hcan==&hcan1)
@@ -111,16 +112,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 				
 				break;
 			}
-			case CAN_2006_M1_ID:
-			{
-				get_motor_measure(&motor_measure_shoot[0], rx_data);
-				if(motor_measure_shoot[0].ecd-motor_measure_shoot[0].last_ecd>4096)
-					dial_angle+=-8192+motor_measure_shoot[0].ecd-motor_measure_shoot[0].last_ecd;		
-				else if(motor_measure_shoot[0].ecd-motor_measure_shoot[0].last_ecd<-4096)
-					dial_angle+=8192+motor_measure_shoot[0].ecd-motor_measure_shoot[0].last_ecd;
-				else
-					dial_angle+=motor_measure_shoot[0].ecd-motor_measure_shoot[0].last_ecd;
-			}
 			
 			case CAN_CAP_RX_ID:
 			{
@@ -136,7 +127,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	}
 	if(hcan==&hcan2)
 	{
-		CAN_RxHeaderTypeDef rx_header2;
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header2, rx_data2);
 		switch (rx_header2.StdId)
 		{		
@@ -152,6 +142,29 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 				DM_pitch_motor_data.toq = uint_to_float(DM_pitch_motor_data.t_int, T_MIN, T_MAX, 12);  // (-18.0,18.0)
 				DM_pitch_motor_data.Tmos = (float)(rx_data2[6]);
 				DM_pitch_motor_data.Tcoil = (float)(rx_data2[7]);
+				
+				break;
+			}
+			case CAN_2006_M1_ID:
+			{
+				get_motor_measure(&motor_measure_shoot[2], rx_data2);
+//				if(motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd>4096)
+//					dial_angle+=-8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;		
+//				else if(motor_measure_shoot[2].ecd-motor_measure_shoot[0].last_ecd<-4096)
+//					dial_angle+=8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
+//				else
+//					dial_angle+=motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
+//				
+				break;
+			}
+			case CAN_3508_M5_ID:
+			case CAN_3508_M6_ID:
+			{
+				static uint8_t i = 0;
+				i = rx_header2.StdId - CAN_3508_M5_ID;
+				
+				get_motor_measure(&motor_measure_shoot[i], rx_data2);			
+				break;
 			}
 		}
 	}

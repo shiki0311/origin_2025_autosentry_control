@@ -19,6 +19,7 @@ typedef struct
 {
   fp32 INS_speed;
   fp32 INS_speed_set;
+	fp32 INS_speed_last;
 	fp32 INS_angle;
   fp32 INS_angle_set;
 	fp32 ENC_angle;

@@ -20,8 +20,8 @@
 #define ANGLE_TO_RAD    0.01745f
 #define RAD_TO_ANGLE    57.295779f
 
-#define PITCH_ECD_ANGLE_MAX 29000  // 27800
-#define PITCH_ECD_ANGLE_MIN 24000// 25000
+#define PITCH_ECD_ANGLE_MAX 27178  // 27800
+#define PITCH_ECD_ANGLE_MIN 24850// 25000
 
 #define YAW_MOTOR_SPEED_PID_KP 600.0f
 #define YAW_MOTOR_SPEED_PID_KI 1.1f//80.0f
@@ -38,14 +38,14 @@
 float yaw_pid_rate=0.3f;//0.3f
 
 #define YAW_MOTOR_AUTO_AIM_PID_KP 20.0f
-#define YAW_MOTOR_AUTO_AIM_PID_KI 0.003f
+#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0003f
 #define YAW_MOTOR_AUTO_AIM_PID_KD 100.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 80.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 30.0f
 
-#define PITCH_MOTOR_SPEED_PID_KP 6.0f
-#define PITCH_MOTOR_SPEED_PID_KI 0.0001f
-#define PITCH_MOTOR_SPEED_PID_KD 80.0f
+#define PITCH_MOTOR_SPEED_PID_KP 2.5f
+#define PITCH_MOTOR_SPEED_PID_KI 0.003f
+#define PITCH_MOTOR_SPEED_PID_KD 0.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_OUT 20.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_IOUT 5.0f
 
@@ -56,14 +56,13 @@ float yaw_pid_rate=0.3f;//0.3f
 #define PITCH_MOTOR_ANGLE_PID_MAX_IOUT 0.05f
 
 float pitch_pid_rate=0.25f;
-#define PITCH_MOTOR_AUTO_AIM_PID_KP 0.25f
-#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.000f//0.0005f
-#define PITCH_MOTOR_AUTO_AIM_PID_KD 30.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_KP 1.8f
+#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.0008f//0.0005f
+#define PITCH_MOTOR_AUTO_AIM_PID_KD 80.0f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 2.5f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 100.0f
 
 CAN_TxHeaderTypeDef  gimbal_tx_message;
-uint8_t              gimbal_can_send_data[8];
 
 gimbal_motor_t gimbal_m6020[2];
 
@@ -97,6 +96,7 @@ extern void Vofa_Send_Data4(float data1, float data2,float data3, float data4);
 static void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4)//-30000,+30000
 {
 	uint32_t send_mail_box;
+	uint8_t  gimbal_can_send_data[8];
 	gimbal_tx_message.StdId = CAN_GIMBAL_ALL_ID;
 	gimbal_tx_message.IDE = CAN_ID_STD;
 	gimbal_tx_message.RTR = CAN_RTR_DATA;
@@ -224,8 +224,8 @@ void Yaw_Motor_Control(void)
 				yaw_angle_err+=360;
 
 		PID_calc(&gimbal_m6020[0].auto_aim_pid,yaw_angle_err,0);		
-		gimbal_m6020[0].INS_speed_set=-gimbal_m6020[0].auto_aim_pid.out; //乘0.8的目标yaw角速度、前馈
-		gimbal_m6020[0].INS_angle_set= AutoAim_Data_Receive.yaw_aim ;
+		gimbal_m6020[0].INS_speed_set=(-gimbal_m6020[0].auto_aim_pid.out)+(gimbal_m6020[0].INS_speed-gimbal_m6020[0].INS_speed_last)*3.5; //乘0.8的目标yaw角速度、前馈
+		gimbal_m6020[0].INS_angle_set= AutoAim_Data_Receive.yaw_aim;
 		yaw_mode=yaw_mode_last=1;
 //		gimbal_m6020[0].INS_angle_set=gimbal_m6020[0].INS_angle;
 	}
@@ -299,7 +299,7 @@ void Pitch_Motor_Control(void)
 		pitch_angle_err=(-AutoAim_Data_Receive.pitch_aim)-DM_pitch_motor_data.INS_angle;
 		PID_calc(&DM_pitch_motor_data.auto_aim_pid,pitch_angle_err,0);
 
-		DM_pitch_motor_data.INS_speed_set=-DM_pitch_motor_data.auto_aim_pid.out;
+		DM_pitch_motor_data.INS_speed_set=(-DM_pitch_motor_data.auto_aim_pid.out)+(DM_pitch_motor_data.INS_speed-DM_pitch_motor_data.INS_speed_last)*0.5;
 		DM_pitch_motor_data.INS_angle_set=AutoAim_Data_Receive.pitch_aim;
 		
 		pitch_mode=pitch_mode_last=1;
@@ -324,7 +324,7 @@ void Pitch_Motor_Control(void)
 		
 		if(pitch_mode==0)
 		{		
-				DM_pitch_motor_data.INS_speed_set=(float)rc_ctrl.rc.ch[1]/660.0f*3.0f;
+				DM_pitch_motor_data.INS_speed_set=(float)rc_ctrl.rc.ch[1]/660.0f*5.0f;
 		}
 		else if(pitch_mode==1&&pitch_mode_last==0)
 		{
@@ -449,32 +449,32 @@ void Pitch_Updown(void)
 	static uint8_t flag=0;
 	if( flag == 0 )
 	{
-		auto_pitch_watch += 0.216f;
+		auto_pitch_watch += 0.1f;
 		if(AutoAim_Data_Receive.pitch_speed == 0)
 		{
-			if(auto_pitch_watch>=37.0f)
+			if(auto_pitch_watch>=25.0f)
 			{
 				flag = 1;
-				auto_pitch_watch = 37.0f;
+				auto_pitch_watch = 25.0f;
 			}
-		}
+		}		
 		else
 		{
-			if(auto_pitch_watch>=37.0f)
+			if(auto_pitch_watch>=25.0f)
 			{
 				flag = 1;
-				auto_pitch_watch = 37.0f;
+				auto_pitch_watch = 25.0f;
 			}
 		}
 		
 	}
 	else
 	{
-		auto_pitch_watch -= 0.216f;
-		if( auto_pitch_watch <=-45 )
+		auto_pitch_watch -= 0.1f;
+		if( auto_pitch_watch <=-25 )
 		{
 			flag = 0;
-			auto_pitch_watch=-45;
+			auto_pitch_watch=-25;
 		}
 	}
 }
@@ -515,7 +515,8 @@ void Gimbal_Task(void const * argument)
 		Pitch_Updown();
 		Pitch_Motor_Control();
 		//Chassis_Gimbal_Angle_Tramsit.chassis_follow_gimbal_angle=DM_pitch_motor_data.pos; // 这个参数好像没用到
-		
+		gimbal_m6020[0].INS_speed_last=gimbal_m6020[0].INS_speed;
+		DM_pitch_motor_data.INS_speed_last=DM_pitch_motor_data.INS_speed;
 		if(rc_ctrl.rc.s[1]==RC_SW_DOWN)
 		{
 			CAN_Gimbal_CMD(0,0,0,0);
@@ -523,13 +524,13 @@ void Gimbal_Task(void const * argument)
 		}
 		else
 		{
-			CAN_Gimbal_CMD(gimbal_m6020[0].give_current,shoot_m2006[0].give_current,0,0);	
+			CAN_Gimbal_CMD(gimbal_m6020[0].give_current,0,0,0);	
 //			CAN_Gimbal_CMD(0,shoot_m2006[0].give_current,0,0);
 			ctrl_motor(DM4310_ID, 0, 0,0, 0, DM_pitch_motor_data.target_current);
 //			ctrl_motor(DM4310_ID, 0, 0,0, 0, 0);
 		}
 
-//	Vofa_Send_Data4(gimbal_m6020[0].angle_pid.set,gimbal_m6020[0].angle_pid.out,gimbal_m6020[0].speed_pid.set,gimbal_m6020[0].speed_pid.out);
+	Vofa_Send_Data4(AutoAim_Data_Receive.yaw_aim,gimbal_m6020[0].INS_angle,(float)AutoAim_Data_Receive.fire_or_not,0);
 //		Vofa_Send_Data4((float)DM_pitch_motor_data.INS_angle_set,(float)DM_pitch_motor_data.INS_angle,DM_pitch_motor_data.INS_speed,DM_pitch_motor_data.INS_speed_set);
 		vTaskDelay(1);
 	}

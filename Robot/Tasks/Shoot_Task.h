@@ -7,11 +7,12 @@
 #define CAN_SHOOT_ALL_ID 0x1FF
 #define CAN_2006_M1_ID 0x206 
 //#define CAN_2006_M2_ID 0x202
-#define SHOOT_CAN hcan1
-#define fric_15m 1500 //13.7
 
-#define fric_18m 1670//22
-#define fric_30m 1730//1690
+
+#define SHOOT_CAN hcan2
+
+#define CAN_3508_M5_ID 0x207 //Ä¦²ÁÂÖ
+#define CAN_3508_M6_ID 0x208
 
 typedef struct
 {
@@ -20,7 +21,9 @@ typedef struct
 	fp32 angle;
   fp32 angle_set;
 	fp32 ENC_angle;
-  int16_t give_current;
+  int16_t current;
+	int16_t target_current;
+	uint8_t id;
 	
 	pid_type_def speed_pid;
 	pid_type_def angle_pid;

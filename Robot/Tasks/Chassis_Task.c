@@ -32,8 +32,8 @@
 
 //#define 	SPEED_SET 3000
 
-#define M3505_MOTOR_SPEED_PID_KP 7.0f
-#define M3505_MOTOR_SPEED_PID_KI 0.005f
+#define M3505_MOTOR_SPEED_PID_KP 12.0f
+#define M3505_MOTOR_SPEED_PID_KI 0.003f
 #define M3505_MOTOR_SPEED_PID_KD 0.0f
 #define M3505_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define M3505_MOTOR_SPEED_PID_MAX_IOUT 2000.0f
@@ -414,9 +414,9 @@ void chassis_vector_set(void)
 		fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
 		fp32 vx,vy;
 		
-		vx = -(float)Chassis_Data_Receive.vy * factor[0]*800;
-		vy = (float)Chassis_Data_Receive.vx * factor[1]*800;
-					
+		vx = -(float)Chassis_Data_Receive.vy * factor[0]*700;
+		vy = (float)Chassis_Data_Receive.vx * factor[1]*700;
+			
 		if(Rotate_Data_Receive.rotate==0) //底盘跟随云台
 		{
 			chassis_control.chassis_follow_gimbal_angle=(float)(((uint16_t)gimbal_m6020[0].ENC_angle+(8192-(uint16_t)chassis_follow_gimbal_zero_actual))%8192)/8192.0f*360.0f-chassis_follow_gimbal_target;                                                   
@@ -629,7 +629,9 @@ void Chassis_Task(void const * argument)
 //		chassis_m3508[3].give_current*=1.0f;
 //		if(fifo_s_isempty(&Referee_FIFO)!=0||Game_Robot_State.mains_power_chassis_output==0x01)
 //		{
+			
 			if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)) //需要打开detect_task
+//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||) //需要打开detect_task
 				CAN_Chassis_CMD(0,0,0,0);
 			else
 			{
@@ -638,15 +640,8 @@ void Chassis_Task(void const * argument)
 //				chassis_power_control();
 //				chassis_power_cap_control();
 				CAN_Chassis_CMD(chassis_m3508[0].give_current,chassis_m3508[1].give_current,chassis_m3508[2].give_current,chassis_m3508[3].give_current);
-				//CAN_Chassis_CMD(0,0,0,0);
 			}
-			//CAN_Chassis_CMD(0,0,0,0);//12.12  for aim test
-//		}
-			
-//		else
-//		{
-////			Chassis_Motor_Init();
-//		}
+
 		vTaskDelay(2);
 	}
 }

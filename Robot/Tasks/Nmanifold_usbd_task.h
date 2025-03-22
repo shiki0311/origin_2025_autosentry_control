@@ -150,7 +150,9 @@ typedef struct{
 	bool_t fire_or_not;
 	bool_t track;
 	float vx;
-	float vy;
+	float vy;                                                   
+
+	
 	float rotate;
 	float yaw_speed;
 	float pitch_speed;	

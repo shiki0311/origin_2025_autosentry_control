@@ -19,7 +19,7 @@ void Vofa_Send_Data4(float data1, float data2,float data3, float data4)
 	Vofa_data_4.ch_data[1] = data2;
 	Vofa_data_4.ch_data[2] = data3;
 	Vofa_data_4.ch_data[3] = data4;
-	HAL_UART_Transmit_DMA(&huart6, (uint8_t *)&Vofa_data_4, sizeof(Vofa_data_4));   
+	HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&Vofa_data_4, sizeof(Vofa_data_4));   
 }
 
 void Vofa_Send_Data8(float data1, float data2,float data3, float data4,float data5, float data6,float data7, float data8)
@@ -35,7 +35,4 @@ void Vofa_Send_Data8(float data1, float data2,float data3, float data4,float dat
 	HAL_UART_Transmit_DMA(&huart6, (uint8_t *)&Vofa_data_8, sizeof(Vofa_data_8));   
 }
 
-void VirCom_send(uint8_t data[], uint16_t len)
-{
-  CDC_Transmit_FS(data, len);
-}
+

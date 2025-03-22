@@ -35,6 +35,7 @@ typedef struct{
 	int16_t  target_current;
 	fp32 INS_speed;
   fp32 INS_speed_set;
+	fp32 INS_speed_last;
 	fp32 INS_angle;
   fp32 INS_angle_set;
 	
@@ -48,7 +49,7 @@ extern void can_filter_init(void);
 
 extern motor_measure_t motor_measure_chassis[4];
 extern motor_measure_t motor_measure_gimbal[2];
-extern motor_measure_t motor_measure_shoot[2];
+extern motor_measure_t motor_measure_shoot[3];
 extern DM_motor_data_t DM_pitch_motor_data;
 
 float uint_to_float(int x_int, float x_min, float x_max, int bits);
