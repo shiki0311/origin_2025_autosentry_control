@@ -148,13 +148,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 			case CAN_2006_M1_ID:
 			{
 				get_motor_measure(&motor_measure_shoot[2], rx_data2);
-//				if(motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd>4096)
-//					dial_angle+=-8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;		
-//				else if(motor_measure_shoot[2].ecd-motor_measure_shoot[0].last_ecd<-4096)
-//					dial_angle+=8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
-//				else
-//					dial_angle+=motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
-//				
+				if(motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd>4096)
+					dial_angle+=-8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;		
+				else if(motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd<-4096)
+					dial_angle+=8192+motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
+				else
+					dial_angle+=motor_measure_shoot[2].ecd-motor_measure_shoot[2].last_ecd;
+				
 				break;
 			}
 			case CAN_3508_M5_ID:

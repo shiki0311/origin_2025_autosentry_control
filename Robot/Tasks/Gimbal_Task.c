@@ -37,30 +37,30 @@
 
 float yaw_pid_rate=0.3f;//0.3f
 
-#define YAW_MOTOR_AUTO_AIM_PID_KP 20.0f
-#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0003f
+#define YAW_MOTOR_AUTO_AIM_PID_KP 25.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0006f
 #define YAW_MOTOR_AUTO_AIM_PID_KD 100.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 80.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 30.0f
 
-#define PITCH_MOTOR_SPEED_PID_KP 2.5f
-#define PITCH_MOTOR_SPEED_PID_KI 0.003f
+#define PITCH_MOTOR_SPEED_PID_KP 4.0f
+#define PITCH_MOTOR_SPEED_PID_KI 0.0005f
 #define PITCH_MOTOR_SPEED_PID_KD 0.0f
-#define PITCH_MOTOR_SPEED_PID_MAX_OUT 20.0f
+#define PITCH_MOTOR_SPEED_PID_MAX_OUT 10.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_IOUT 5.0f
 
-#define PITCH_MOTOR_ANGLE_PID_KP 0.2f//0.2f
-#define PITCH_MOTOR_ANGLE_PID_KI 0.0f
-#define PITCH_MOTOR_ANGLE_PID_KD 30.0f//3.0f
+#define PITCH_MOTOR_ANGLE_PID_KP 0.15f//0.2f
+#define PITCH_MOTOR_ANGLE_PID_KI 0.001f
+#define PITCH_MOTOR_ANGLE_PID_KD 20.0f//3.0f
 #define PITCH_MOTOR_ANGLE_PID_MAX_OUT 4.5f
-#define PITCH_MOTOR_ANGLE_PID_MAX_IOUT 0.05f
+#define PITCH_MOTOR_ANGLE_PID_MAX_IOUT 1.0f
 
 float pitch_pid_rate=0.25f;
-#define PITCH_MOTOR_AUTO_AIM_PID_KP 1.8f
-#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.0008f//0.0005f
-#define PITCH_MOTOR_AUTO_AIM_PID_KD 80.0f
-#define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 2.5f
-#define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 100.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_KP 0.6f
+#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.00001f//0.0005f
+#define PITCH_MOTOR_AUTO_AIM_PID_KD 20.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 20.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 1.5f
 
 CAN_TxHeaderTypeDef  gimbal_tx_message;
 
@@ -224,7 +224,7 @@ void Yaw_Motor_Control(void)
 				yaw_angle_err+=360;
 
 		PID_calc(&gimbal_m6020[0].auto_aim_pid,yaw_angle_err,0);		
-		gimbal_m6020[0].INS_speed_set=(-gimbal_m6020[0].auto_aim_pid.out)+(gimbal_m6020[0].INS_speed-gimbal_m6020[0].INS_speed_last)*3.5; //乘0.8的目标yaw角速度、前馈
+		gimbal_m6020[0].INS_speed_set=(-gimbal_m6020[0].auto_aim_pid.out)+(gimbal_m6020[0].INS_speed-gimbal_m6020[0].INS_speed_last)*6.0; //乘0.8的目标yaw角速度、前馈
 		gimbal_m6020[0].INS_angle_set= AutoAim_Data_Receive.yaw_aim;
 		yaw_mode=yaw_mode_last=1;
 //		gimbal_m6020[0].INS_angle_set=gimbal_m6020[0].INS_angle;
@@ -299,7 +299,7 @@ void Pitch_Motor_Control(void)
 		pitch_angle_err=(-AutoAim_Data_Receive.pitch_aim)-DM_pitch_motor_data.INS_angle;
 		PID_calc(&DM_pitch_motor_data.auto_aim_pid,pitch_angle_err,0);
 
-		DM_pitch_motor_data.INS_speed_set=(-DM_pitch_motor_data.auto_aim_pid.out)+(DM_pitch_motor_data.INS_speed-DM_pitch_motor_data.INS_speed_last)*0.5;
+		DM_pitch_motor_data.INS_speed_set=(-DM_pitch_motor_data.auto_aim_pid.out)+(DM_pitch_motor_data.INS_speed-DM_pitch_motor_data.INS_speed_last)*0.2;
 		DM_pitch_motor_data.INS_angle_set=AutoAim_Data_Receive.pitch_aim;
 		
 		pitch_mode=pitch_mode_last=1;
@@ -342,9 +342,9 @@ void Pitch_Motor_Control(void)
 //			if(gimbal_m6020[1].INS_angle_set>0)gimbal_m6020[1].INS_angle_set=20;
 //			if(gimbal_m6020[1].INS_angle_set<-0)gimbal_m6020[1].INS_angle_set=-20;
 
-			PID_calc(&DM_pitch_motor_data.angle_pid,DM_pitch_motor_data.INS_angle,DM_pitch_motor_data.INS_angle_set);
+			PID_calc(&DM_pitch_motor_data.auto_aim_pid,DM_pitch_motor_data.INS_angle,DM_pitch_motor_data.INS_angle_set);
 			pitch_err=DM_pitch_motor_data.INS_angle_set-DM_pitch_motor_data.INS_angle;
-			DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.angle_pid.out;
+			DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.auto_aim_pid.out;
 			
 //			if(gimbal_m6020[1].ENC_angle>5600&&gimbal_m6020[1].INS_speed_set>0)gimbal_m6020[1].INS_speed_set=0;
 	//		PID_calc(&gimbal_m6020[1].angle_pid,gimbal_m6020[1].ENC_angle_actual,gimbal_m6020[1].ENC_angle_set);
@@ -354,7 +354,7 @@ void Pitch_Motor_Control(void)
 	else if(rc_ctrl.rc.s[1]==RC_SW_UP) // 如果处于自瞄状态：就让pitch上下摇
 	{
 			PID_calc(&DM_pitch_motor_data.angle_pid,DM_pitch_motor_data.INS_angle,auto_pitch_watch);
-			DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.angle_pid.out+0.05f;
+			DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.angle_pid.out;
 	}
 	
 	// 电子限位
@@ -447,34 +447,28 @@ void Pitch_Motor_Control(void)
 void Pitch_Updown(void)
 {
 	static uint8_t flag=0;
-	if( flag == 0 )
-	{
-		auto_pitch_watch += 0.1f;
-		if(AutoAim_Data_Receive.pitch_speed == 0)
+	AutoAim_Data_Receive.pitch_speed=1;
+	if(AutoAim_Data_Receive.pitch_speed == 0)
 		{
-			if(auto_pitch_watch>=25.0f)
-			{
-				flag = 1;
-				auto_pitch_watch = 25.0f;
-			}
+				auto_pitch_watch = 0.0f;
 		}		
-		else
-		{
-			if(auto_pitch_watch>=25.0f)
+		
+	if( flag == 0 && AutoAim_Data_Receive.pitch_speed)
+	{
+		auto_pitch_watch += 0.05f;//pitch往下
+			if(auto_pitch_watch>=20.0f)
 			{
 				flag = 1;
 				auto_pitch_watch = 25.0f;
-			}
-		}
-		
+			}		
 	}
-	else
+	else if(flag==1 && AutoAim_Data_Receive.pitch_speed)
 	{
-		auto_pitch_watch -= 0.1f;
-		if( auto_pitch_watch <=-25 )
+		auto_pitch_watch -= 0.05f;
+		if( auto_pitch_watch <=-3.0 )
 		{
 			flag = 0;
-			auto_pitch_watch=-25;
+			auto_pitch_watch=3.0;
 		}
 	}
 }

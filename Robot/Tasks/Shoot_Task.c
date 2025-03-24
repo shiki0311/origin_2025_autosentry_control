@@ -10,9 +10,10 @@
 #include <stdlib.h>
 #include "referee.h"
 #include "math.h"
+#include "Nmanifold_usbd_task.h"
 
 #define SHOOT_MOTOR_SPEED_PID_KP 7.0f
-#define SHOOT_MOTOR_SPEED_PID_KI 0.08f
+#define SHOOT_MOTOR_SPEED_PID_KI 0.01f
 #define SHOOT_MOTOR_SPEED_PID_KD 0.0f
 #define SHOOT_MOTOR_SPEED_PID_MAX_OUT 28000.0f
 #define SHOOT_MOTOR_SPEED_PID_MAX_IOUT 10000.0f
@@ -256,8 +257,9 @@ void Shoot_Task(void const * argument)
 		Fric_Motor_Control();  // 摩擦轮默认开机自启
 		target_rpm = target_rpm_define;
 		Dial_Motor_Control();
+		if(rc_ctrl.rc.s[1]==RC_SW_UP || AutoAim_Data_Receive.track){
 		Shoot_Power_Control();
-		
+		}
 		CAN_Shoot_CMD(0,shoot_m2006[0].target_current,shoot_motor_3508[0].target_current,shoot_motor_3508[1].target_current);
 		vTaskDelay(2);
 	}

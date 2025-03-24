@@ -33,7 +33,7 @@
 //#define 	SPEED_SET 3000
 
 #define M3505_MOTOR_SPEED_PID_KP 12.0f
-#define M3505_MOTOR_SPEED_PID_KI 0.003f
+#define M3505_MOTOR_SPEED_PID_KI 0.008f
 #define M3505_MOTOR_SPEED_PID_KD 0.0f
 #define M3505_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define M3505_MOTOR_SPEED_PID_MAX_IOUT 2000.0f
@@ -86,7 +86,7 @@ extern Chassis_Data_Tx Chassis_Data_Tramsit;
 
 extern Rotate_Data_Rx Rotate_Data_Receive;
 
-uint8_t chassis_power_limit_rmul=100;
+uint8_t chassis_power_limit_rmul=95;
 float chassis_follow_gimbal_target=0;
 extern uint8_t chassis_follow_gimbal_changing;
 
