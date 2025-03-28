@@ -414,8 +414,8 @@ void chassis_vector_set(void)
 		fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
 		fp32 vx,vy;
 		
-		vx = -(float)Chassis_Data_Receive.vy * factor[0]*700;
-		vy = (float)Chassis_Data_Receive.vx * factor[1]*700;
+		vx = -(float)Chassis_Data_Receive.vy * factor[0]*800;
+		vy = (float)Chassis_Data_Receive.vx * factor[1]*800;
 			
 		if(Rotate_Data_Receive.rotate==0) //底盘跟随云台
 		{
@@ -445,9 +445,9 @@ void chassis_vector_set(void)
 			chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
 			chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
 
-//			rotate_sine_angle+=(0.2/rotate_sine_T*360);
-//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
-			chassis_control.wz=-1.0f * (float)Rotate_Data_Receive.rotate;
+			rotate_sine_angle+=(0.2/rotate_sine_T*360);
+			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
+			chassis_control.wz=-(0.7*(float)Rotate_Data_Receive.rotate+0.3*(float)Rotate_Data_Receive.rotate*arm_sin_f32((rotate_sine_angle*PI)/180));
 			chassis_follow_gimbal_zerochange_flag=1;
 		}
 	}
@@ -630,8 +630,8 @@ void Chassis_Task(void const * argument)
 //		if(fifo_s_isempty(&Referee_FIFO)!=0||Game_Robot_State.mains_power_chassis_output==0x01)
 //		{
 			
-			if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)) //需要打开detect_task
-//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||) //需要打开detect_task
+//		if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)) //需要打开detect_task
+				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //需要打开detect_task
 				CAN_Chassis_CMD(0,0,0,0);
 			else
 			{

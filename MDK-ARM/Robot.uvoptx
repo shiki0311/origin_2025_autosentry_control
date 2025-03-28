@@ -270,12 +270,37 @@
           <WinNumber>1</WinNumber>
           <ItemText>\\Robot\../Robot/App/remote_control.c\rc_ctrl</ItemText>
         </Ww>
+        <Ww>
+          <count>24</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Game_Status</ItemText>
+        </Ww>
+        <Ww>
+          <count>25</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Bullet_Remaining</ItemText>
+        </Ww>
+        <Ww>
+          <count>26</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Bullet_Remaining</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
           <count>0</count>
           <WinNumber>2</WinNumber>
           <ItemText>\\Robot\../Robot/Tasks/Shoot_Task.c\shoot_motor_3508,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>1</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>gimbal_m6020[0],0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>2</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>\\Robot\../Robot/BSP/bsp_can.c\DM_pitch_motor_data,0x0A</ItemText>
         </Ww>
       </WatchWindow2>
       <Tracepoint>

@@ -159,7 +159,7 @@ void MX_FREERTOS_Init(void) {
   Gimbal_TASKHandle = osThreadCreate(osThread(Gimbal_TASK), NULL);
 
   /* definition and creation of Shoot_TASK */
-  osThreadDef(Shoot_TASK, Shoot_Task, osPriorityHigh, 0, 512);
+  osThreadDef(Shoot_TASK, Shoot_Task, osPriorityNormal, 0, 512);
   Shoot_TASKHandle = osThreadCreate(osThread(Shoot_TASK), NULL);
 
 //  /* definition and creation of kalman_tracking */

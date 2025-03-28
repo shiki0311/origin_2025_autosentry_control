@@ -11,8 +11,9 @@
 #include "referee.h"
 #include "math.h"
 #include "Nmanifold_usbd_task.h"
+#include "Vofa_send.h"
 
-#define SHOOT_MOTOR_SPEED_PID_KP 7.0f
+#define SHOOT_MOTOR_SPEED_PID_KP 3.0f
 #define SHOOT_MOTOR_SPEED_PID_KI 0.01f
 #define SHOOT_MOTOR_SPEED_PID_KD 0.0f
 #define SHOOT_MOTOR_SPEED_PID_MAX_OUT 28000.0f
@@ -24,12 +25,12 @@
 #define SHOOT_MOTOR_ANGLE_PID_MAX_OUT 10000.0f
 #define SHOOT_MOTOR_ANGLE_PID_MAX_IOUT 10000.0f
 
-#define SHOOT_MOTOR_3508_SPEED_PID_KP1 3.3f
-#define SHOOT_MOTOR_3508_SPEED_PID_KI1 0.0f
+#define SHOOT_MOTOR_3508_SPEED_PID_KP1 4.0f
+#define SHOOT_MOTOR_3508_SPEED_PID_KI1 0.00007f
 #define SHOOT_MOTOR_3508_SPEED_PID_KD1 0.0f
 
-#define SHOOT_MOTOR_3508_SPEED_PID_KP2 3.3f
-#define SHOOT_MOTOR_3508_SPEED_PID_KI2 0.0f
+#define SHOOT_MOTOR_3508_SPEED_PID_KP2 4.0f
+#define SHOOT_MOTOR_3508_SPEED_PID_KI2 0.00007f
 #define SHOOT_MOTOR_3508_SPEED_PID_KD2 0.0f
 #define SHOOT_MOTOR_3508_SPEED_PID_MAX_OUT 3000.0f
 #define SHOOT_MOTOR_3508_SPEED_PID_MAX_IOUT 2000.0f
@@ -95,7 +96,7 @@ CAN_TxHeaderTypeDef  shoot_tx_message;
 uint8_t              shoot_can_send_data[8];
 
 
-static void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4)//-30000,+30000
+void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4)//-30000,+30000
 {
 	uint32_t send_mail_box;
 	shoot_tx_message.StdId = CAN_SHOOT_ALL_ID;
@@ -135,7 +136,7 @@ void Fric_Motor_Control(void)
 			shoot_motor_3508[0].speed_set = target_rpm;
 			shoot_motor_3508[1].speed_set = -target_rpm;
 			
-			if((shoot_motor_3508[0].speed>5000)&&(shoot_motor_3508[1].speed<-5000)){
+			if((shoot_motor_3508[0].speed>6000)&&(shoot_motor_3508[1].speed<-6000)){
 				shoot_flag=1;
 			}
 		}
@@ -161,13 +162,13 @@ void Dial_Motor_Control(void)
 		if(abs(shoot_m2006[0].target_current)>18000 && fabs(shoot_m2006[0].speed)<100) //堵转自检 反转并重启
 		{ 
 			dial_stop_cnt++;
-			if(dial_stop_cnt>100)
+			if(dial_stop_cnt>250)
 			{
 				if(shoot_m2006[0].target_current<0)
-					shoot_m2006[0].target_current=8000;
+					shoot_m2006[0].target_current=5000;
 				else
-					shoot_m2006[0].target_current=-8000;
-				vTaskDelay(200);
+					shoot_m2006[0].target_current=-5000;
+				vTaskDelay(300);
 				Shoot_Motor_Init();
 				PID_clear(&shoot_m2006[0].speed_pid);
 				PID_clear(&shoot_m2006[0].angle_pid);
@@ -215,11 +216,11 @@ uint16_t cooling_limit_cnt[2]={0};
 
 void Shoot_Power_Control() // 根据裁判系统传回的数据判定是否发射
 {
-	if(Power_Heat_Data.shooter_17mm_1_barrel_heat>=(Game_Robot_State.shooter_barrel_heat_limit-50)) // 枪管1冷却值上限 
+	if(Power_Heat_Data.shooter_17mm_1_barrel_heat>=(Game_Robot_State.shooter_barrel_heat_limit-40)) // 枪管1冷却值上限 
 	{
 		flag_cooling_limit[0]=1;
 	}
-	if(Power_Heat_Data.shooter_17mm_2_barrel_heat>=(Game_Robot_State.shooter_barrel_heat_limit-50))
+	if(Power_Heat_Data.shooter_17mm_2_barrel_heat>=(Game_Robot_State.shooter_barrel_heat_limit-40))
 	{
 		flag_cooling_limit[1]=1;
 	}
@@ -260,7 +261,7 @@ void Shoot_Task(void const * argument)
 		if(rc_ctrl.rc.s[1]==RC_SW_UP || AutoAim_Data_Receive.track){
 		Shoot_Power_Control();
 		}
-		CAN_Shoot_CMD(0,shoot_m2006[0].target_current,shoot_motor_3508[0].target_current,shoot_motor_3508[1].target_current);
+		
 		vTaskDelay(2);
 	}
 }

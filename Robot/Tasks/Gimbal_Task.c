@@ -30,37 +30,37 @@
 #define YAW_MOTOR_SPEED_PID_MAX_IOUT 10000.0f
 
 #define YAW_MOTOR_ANGLE_PID_KP 24.80f
-#define YAW_MOTOR_ANGLE_PID_KI 0.013113f
-#define YAW_MOTOR_ANGLE_PID_KD 100.3f
+#define YAW_MOTOR_ANGLE_PID_KI 0.00013113f
+#define YAW_MOTOR_ANGLE_PID_KD 200.3f
 #define YAW_MOTOR_ANGLE_PID_MAX_OUT 1200.0f
-#define YAW_MOTOR_ANGLE_PID_MAX_IOUT 100.0f
+#define YAW_MOTOR_ANGLE_PID_MAX_IOUT 50.0f
 
 float yaw_pid_rate=0.3f;//0.3f
 
-#define YAW_MOTOR_AUTO_AIM_PID_KP 25.0f
-#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0006f
-#define YAW_MOTOR_AUTO_AIM_PID_KD 100.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KP 8.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0001f
+#define YAW_MOTOR_AUTO_AIM_PID_KD 50.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 80.0f
-#define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 30.0f
+#define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 0.0f
 
-#define PITCH_MOTOR_SPEED_PID_KP 4.0f
-#define PITCH_MOTOR_SPEED_PID_KI 0.0005f
+#define PITCH_MOTOR_SPEED_PID_KP 4.5f
+#define PITCH_MOTOR_SPEED_PID_KI 0.0002f
 #define PITCH_MOTOR_SPEED_PID_KD 0.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_OUT 10.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_IOUT 5.0f
 
-#define PITCH_MOTOR_ANGLE_PID_KP 0.15f//0.2f
+#define PITCH_MOTOR_ANGLE_PID_KP 0.05f//0.2f
 #define PITCH_MOTOR_ANGLE_PID_KI 0.001f
 #define PITCH_MOTOR_ANGLE_PID_KD 20.0f//3.0f
 #define PITCH_MOTOR_ANGLE_PID_MAX_OUT 4.5f
 #define PITCH_MOTOR_ANGLE_PID_MAX_IOUT 1.0f
 
 float pitch_pid_rate=0.25f;
-#define PITCH_MOTOR_AUTO_AIM_PID_KP 0.6f
-#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.00001f//0.0005f
-#define PITCH_MOTOR_AUTO_AIM_PID_KD 20.0f
+#define PITCH_MOTOR_AUTO_AIM_PID_KP 0.7f
+#define PITCH_MOTOR_AUTO_AIM_PID_KI 0.00000f//0.0005f
+#define PITCH_MOTOR_AUTO_AIM_PID_KD 10.0f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 20.0f
-#define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 1.5f
+#define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 0.0f
 
 CAN_TxHeaderTypeDef  gimbal_tx_message;
 
@@ -83,15 +83,15 @@ uint8_t gimbal_output_last = 0;
 uint8_t enable_send_count = 0;
 
 extern DM_motor_data_t DM_pitch_motor_data;
-
+extern uint32_t dial_stop_cnt;
 extern ext_game_robot_state_t Game_Robot_State;
 extern fifo_s_t Referee_FIFO;
 extern uint8_t chassis_follow_gimbal_changing;
-
+extern shoot_motor_t shoot_motor_3508[2];
 extern Chassis_Gimbal_Angle_TX Chassis_Gimbal_Angle_Tramsit;
 
 extern Chassis_Data_Rx Chassis_Data_Receive;
-
+extern void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 extern void Vofa_Send_Data4(float data1, float data2,float data3, float data4);
 static void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4)//-30000,+30000
 {
@@ -213,8 +213,8 @@ void Yaw_Motor_Control(void)
 //	auto_aim_id=AutoAim_Data_Receive.Aimed_ID;
 	auto_aim_tracking=AutoAim_Data_Receive.track;
 	
-////	¿ªÆô×ÔÃéµÄÁ½ÖÖ·½·¨£º1¡¢²»¿ªµ¼º½µÄÇé¿öÏÂ¿ª×ÔÃé  2¡¢¿ªÆôµ¼º½ºÍ×ÔÃé
-	if((auto_aim_tracking)||(rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))
+////	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¿ï¿½ï¿½ï¿½ï¿½ï¿½  2ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if(auto_aim_tracking)
 	{		  
 		yaw_angle_err = AutoAim_Data_Receive.yaw_aim-gimbal_m6020[0].INS_angle;
 		if(yaw_angle_err>180)
@@ -224,26 +224,26 @@ void Yaw_Motor_Control(void)
 				yaw_angle_err+=360;
 
 		PID_calc(&gimbal_m6020[0].auto_aim_pid,yaw_angle_err,0);		
-		gimbal_m6020[0].INS_speed_set=(-gimbal_m6020[0].auto_aim_pid.out)+(gimbal_m6020[0].INS_speed-gimbal_m6020[0].INS_speed_last)*6.0; //³Ë0.8µÄÄ¿±êyaw½ÇËÙ¶È¡¢Ç°À¡
+		gimbal_m6020[0].INS_speed_set=(-gimbal_m6020[0].auto_aim_pid.out)+(gimbal_m6020[0].INS_speed-gimbal_m6020[0].INS_speed_last)*3.0; //ï¿½ï¿½0.8ï¿½ï¿½Ä¿ï¿½ï¿½yawï¿½ï¿½ï¿½Ù¶È¡ï¿½Ç°ï¿½ï¿½
 		gimbal_m6020[0].INS_angle_set= AutoAim_Data_Receive.yaw_aim;
 		yaw_mode=yaw_mode_last=1;
 //		gimbal_m6020[0].INS_angle_set=gimbal_m6020[0].INS_angle;
 	}
 	
-	// Ò£¿ØÆ÷¿ØÖÆ ²¢ÇÒÅÅ³ýÃ»ÓÐÒ£¿ØÆ÷Á¬½ÓµÄÇé¿ö
+	// Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Å³ï¿½Ã»ï¿½ï¿½Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½
 	else if(rc_ctrl.rc.s[1]==RC_SW_MID)
 	{
 		yaw_mode_last=yaw_mode;
 		if(rc_ctrl.rc.ch[0]>10||rc_ctrl.rc.ch[0]<-10)
 		{			
-			yaw_mode=0;//0Ò£¿ØÆ÷ÓÐÊäÈë,1Ò£¿ØÆ÷ÎÞÊäÈë
+			yaw_mode=0;//0Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,1Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		}
 		else
 		{
 			yaw_mode=1;
 		}
 		
-//		if(chassis_follow_gimbal_changing==1) //ºÃÏñÓÀÔ¶ÎÞ·¨½øÈëÕâ¸öÌõ¼þ£¬Ã»ÓÐÖÃ1µÄ´úÂë
+//		if(chassis_follow_gimbal_changing==1) //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½1ï¿½Ä´ï¿½ï¿½ï¿½
 //		{
 //			yaw_mode=1;
 //			yaw_mode_last=yaw_mode;
@@ -254,12 +254,12 @@ void Yaw_Motor_Control(void)
 			gimbal_m6020[0].INS_speed_set=-(float)rc_ctrl.rc.ch[0]/660.0f*5.0f*RAD_TO_ANGLE;
 //			gimbal_m6020[0].INS_speed_set=100;
 		}
-		else if(yaw_mode==1&&yaw_mode_last==0)//¼ÇÂ¼Ò£¿ØÆ÷´Ó¸øyawÖáµç»úËÙ¶Èµ½²»¸øËÙ¶ÈµÄÒ»Ë²¼äµÄimuÊý¾Ý
+		else if(yaw_mode==1&&yaw_mode_last==0)//ï¿½ï¿½Â¼Ò£ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½yawï¿½ï¿½ï¿½ï¿½ï¿½Ù¶Èµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶Èµï¿½Ò»Ë²ï¿½ï¿½ï¿½imuï¿½ï¿½ï¿½ï¿½
 		{
 			gimbal_m6020[0].INS_angle_set=gimbal_m6020[0].INS_angle;
 		}
 			
-		if(yaw_mode==1)//Ò£¿ØÆ÷ÎÞÊäÈë£¬yawÖá¶¨ËÀ
+		if(yaw_mode==1)//Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë£¬yawï¿½á¶¨ï¿½ï¿½
 		{
 			yaw_angle_err=(gimbal_m6020[0].INS_angle_set-gimbal_m6020[0].INS_angle);
 			if(yaw_angle_err>180) yaw_angle_err-=360;
@@ -270,7 +270,7 @@ void Yaw_Motor_Control(void)
 		}
 
 	}
-	else if(rc_ctrl.rc.s[1]==RC_SW_UP) // µ¼º½
+	else if(rc_ctrl.rc.s[1]==RC_SW_UP) // ï¿½ï¿½ï¿½ï¿½
 	{
 //			gimbal_m6020[0].INS_speed_set= Chassis_Data_Receive.yaw_speed/1000.0f*RAD_TO_ANGLE;
 			gimbal_m6020[0].INS_speed_set= Chassis_Data_Receive.yaw_speed*RAD_TO_ANGLE;
@@ -291,7 +291,7 @@ void Pitch_Motor_Control(void)
 //		gimbal_m6020[1].ENC_angle_actual-=360;
 //	}
 	
-	//¿ª×ÔÃé 
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 
 	if((auto_aim_tracking) || (rc_ctrl.rc.s[1]==RC_SW_UP&&auto_aim_tracking))  
 	{  
 		
@@ -307,7 +307,7 @@ void Pitch_Motor_Control(void)
 //		gimbal_m6020[1].INS_angle_set=gimbal_m6020[1].INS_angle;
 	}
 	
-	// ÊÖ¿Ø
+	// ï¿½Ö¿ï¿½
 	else if(rc_ctrl.rc.s[1]==RC_SW_MID)  
 	{
 		pitch_mode_last=pitch_mode;
@@ -351,13 +351,13 @@ void Pitch_Motor_Control(void)
 	//		gimbal_m6020[1].INS_speed_set=gimbal_m6020[1].angle_pid.out;
 		}
 	}
-	else if(rc_ctrl.rc.s[1]==RC_SW_UP) // Èç¹û´¦ÓÚ×ÔÃé×´Ì¬£º¾ÍÈÃpitchÉÏÏÂÒ¡
+	else if(rc_ctrl.rc.s[1]==RC_SW_UP) // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½pitchï¿½ï¿½ï¿½ï¿½Ò¡
 	{
 			PID_calc(&DM_pitch_motor_data.angle_pid,DM_pitch_motor_data.INS_angle,auto_pitch_watch);
 			DM_pitch_motor_data.INS_speed_set=DM_pitch_motor_data.angle_pid.out;
 	}
 	
-	// µç×ÓÏÞÎ»
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»
 	if((DM_pitch_motor_data.p_int>PITCH_ECD_ANGLE_MAX||DM_pitch_motor_data.p_int < PITCH_ECD_ANGLE_MIN) && (DM_pitch_motor_data.p_int <50000))
 	{
 	  if(DM_pitch_motor_data.p_int<PITCH_ECD_ANGLE_MIN && DM_pitch_motor_data.INS_speed_set>0)
@@ -378,7 +378,7 @@ void Pitch_Motor_Control(void)
 }
 /****************************************************system identify***********************************************************/
 //uint8_t BUFF_niming[30];
-//void niming_sent_data(float A,float B,float time)//ÄäÃûµØ?¶Ë´ò°üº¯Êý
+//void niming_sent_data(float A,float B,float time)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½?ï¿½Ë´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //{
 //int i;
 //uint8_t sumcheck = 0;
@@ -410,7 +410,7 @@ void Pitch_Motor_Control(void)
 //HAL_UART_Transmit_DMA(&huart1,BUFF_niming,_cnt);
 //}
 
-//void Yaw_Motor_Identification()//ÏµÍ³±æÊ¶º¯Êý
+//void Yaw_Motor_Identification()//ÏµÍ³ï¿½ï¿½Ê¶ï¿½ï¿½ï¿½ï¿½
 //{
 //static float sin_time = 0;
 //static float last_sin_time = 0;
@@ -430,7 +430,7 @@ void Pitch_Motor_Control(void)
 //		sin_time += 0.002;
 //		PID_calc(&gimbal_m6020[0].speed_pid, gimbal_m6020[0].INS_speed, speed_set);
 //		gimbal_m6020[0].give_current = gimbal_m6020[0].speed_pid.out;
-//		CAN_Gimbal_CMD((int16_t)speed_set, gimbal_m6020[1].give_current, 0, 0);//Ðè¸ü»»Îª±»µ÷²Î»úÆ÷?µÄÔÆÌ¨µç»ú¿ØÖÆ´úÂë
+//		CAN_Gimbal_CMD((int16_t)speed_set, gimbal_m6020[1].give_current, 0, 0);//ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½?ï¿½ï¿½ï¿½ï¿½Ì¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ´ï¿½ï¿½ï¿½
 //		niming_sent_data(speed_set,gimbal_m6020[0].INS_speed,sin_time);
 //		if(last_sin_time + 3.1415926*4/(float)f[i_sin] <= sin_time)
 //		{
@@ -455,7 +455,7 @@ void Pitch_Updown(void)
 		
 	if( flag == 0 && AutoAim_Data_Receive.pitch_speed)
 	{
-		auto_pitch_watch += 0.05f;//pitchÍùÏÂ
+		auto_pitch_watch += 0.05f;//pitchï¿½ï¿½ï¿½ï¿½
 			if(auto_pitch_watch>=20.0f)
 			{
 				flag = 1;
@@ -465,7 +465,7 @@ void Pitch_Updown(void)
 	else if(flag==1 && AutoAim_Data_Receive.pitch_speed)
 	{
 		auto_pitch_watch -= 0.05f;
-		if( auto_pitch_watch <=-3.0 )
+		if( auto_pitch_watch <=-9.0 )
 		{
 			flag = 0;
 			auto_pitch_watch=3.0;
@@ -476,7 +476,7 @@ void Pitch_Updown(void)
 void DM_reset(){
 	if(Game_Robot_State.power_management_gimbal_output && !gimbal_output_last)
         {		
-            enable_send_count = 5; // ÉèÖÃ·¢ËÍ¼ÆÊýÆ÷,Ê¹ÄÜ´ïÃëÊ®´Î
+            enable_send_count = 5; // ï¿½ï¿½ï¿½Ã·ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½,Ê¹ï¿½Ü´ï¿½ï¿½ï¿½Ê®ï¿½ï¿½
 						HAL_Delay(1000);
         }
         gimbal_output_last = Game_Robot_State.power_management_gimbal_output;
@@ -508,29 +508,30 @@ void Gimbal_Task(void const * argument)
 		Yaw_Motor_Control();
 		Pitch_Updown();
 		Pitch_Motor_Control();
-		//Chassis_Gimbal_Angle_Tramsit.chassis_follow_gimbal_angle=DM_pitch_motor_data.pos; // Õâ¸ö²ÎÊýºÃÏñÃ»ÓÃµ½
+		//Chassis_Gimbal_Angle_Tramsit.chassis_follow_gimbal_angle=DM_pitch_motor_data.pos; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½Ãµï¿½
 		gimbal_m6020[0].INS_speed_last=gimbal_m6020[0].INS_speed;
 		DM_pitch_motor_data.INS_speed_last=DM_pitch_motor_data.INS_speed;
 		if(rc_ctrl.rc.s[1]==RC_SW_DOWN)
 		{
 			CAN_Gimbal_CMD(0,0,0,0);
 			ctrl_motor(DM4310_ID, 0, 0,0, 0, 0);
+			CAN_Shoot_CMD(0,0,shoot_motor_3508[0].target_current,shoot_motor_3508[1].target_current);
 		}
 		else
 		{
 			CAN_Gimbal_CMD(gimbal_m6020[0].give_current,0,0,0);	
-//			CAN_Gimbal_CMD(0,shoot_m2006[0].give_current,0,0);
 			ctrl_motor(DM4310_ID, 0, 0,0, 0, DM_pitch_motor_data.target_current);
-//			ctrl_motor(DM4310_ID, 0, 0,0, 0, 0);
+			CAN_Shoot_CMD(0,shoot_m2006[0].target_current,shoot_motor_3508[0].target_current,shoot_motor_3508[1].target_current);
 		}
-
-	Vofa_Send_Data4(AutoAim_Data_Receive.yaw_aim,gimbal_m6020[0].INS_angle,(float)AutoAim_Data_Receive.fire_or_not,0);
+	
+//		Vofa_Send_Data4((float)dial_stop_cnt,motor_measure_shoot[2].given_current,shoot_m2006[0].target_current,0);
+//	Vofa_Send_Data4(AutoAim_Data_Receive.yaw_aim,gimbal_m6020[0].INS_angle,(float)AutoAim_Data_Receive.fire_or_not,0);
 //		Vofa_Send_Data4((float)DM_pitch_motor_data.INS_angle_set,(float)DM_pitch_motor_data.INS_angle,DM_pitch_motor_data.INS_speed,DM_pitch_motor_data.INS_speed_set);
 		vTaskDelay(1);
 	}
 }
 
-/*********************************************************´ïÃîµç»ú¿ØÖÆ³ÌÐò*********************************************************/
+/*********************************************************ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½*********************************************************/
 #define KP_MIN 0.0f
 #define KP_MAX 500.0f
 #define KD_MIN 0.0f
@@ -552,8 +553,8 @@ void ctrl_motor(uint16_t id, float _pos, float _vel,float _KP, float _KD, float 
 	
 	//uint8_t *pbuf,*vbuf;
 	Tx_Msg.StdId=id;	 //set chassis motor current.
-	Tx_Msg.IDE=CAN_ID_STD;		  // ²»Ê¹ÓÃÀ©Õ¹±êÊ¶·û
-	Tx_Msg.RTR=CAN_RTR_DATA;		  // ÏûÏ¢ÀàÐÍÎªÊý¾ÝÖ¡£¬Ò»Ö¡8Î»
+	Tx_Msg.IDE=CAN_ID_STD;		  // ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½Ê¶ï¿½ï¿½
+	Tx_Msg.RTR=CAN_RTR_DATA;		  // ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½Ò»Ö¡8Î»
 	Tx_Msg.DLC=8; 
 
 	uint16_t pos_tmp,vel_tmp,kp_tmp,kd_tmp,tor_tmp;
@@ -584,8 +585,8 @@ void enable_DM(uint8_t id, uint8_t ctrl_mode)
 	if(ctrl_mode==1)			Tx_Msg.StdId=0x000+DM4310_ID;	 //set chassis motor current.
 	else if(ctrl_mode==2)	Tx_Msg.StdId=0x100+DM4310_ID;	 //set chassis motor current.
 	else if(ctrl_mode==3)	Tx_Msg.StdId=0x200+DM4310_ID;	 //set chassis motor current.
-	Tx_Msg.IDE=CAN_ID_STD;		  // ²»Ê¹ÓÃÀ©Õ¹±êÊ¶·û
-	Tx_Msg.RTR=CAN_RTR_DATA;		  // ÏûÏ¢ÀàÐÍÎªÊý¾ÝÖ¡£¬Ò»Ö¡8Î»
+	Tx_Msg.IDE=CAN_ID_STD;		  // ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½Ê¶ï¿½ï¿½
+	Tx_Msg.RTR=CAN_RTR_DATA;		  // ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½Ò»Ö¡8Î»
 	Tx_Msg.DLC=8; 
 	
 	TX_Data[0] = 0xff;
@@ -597,10 +598,10 @@ void enable_DM(uint8_t id, uint8_t ctrl_mode)
 	TX_Data[6] = 0xff;
 	TX_Data[7] = 0xfc;
 
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);    //½«Êý¾Ý´¢´æ½øÓÊÏäFIFOx
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);    //ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½FIFOx
 }
 
-//Ê§ÄÜ
+//Ê§ï¿½ï¿½
 void disable_DM(uint8_t id, uint8_t ctrl_mode)
 {
 	uint8_t TX_Data[8];
@@ -611,8 +612,8 @@ void disable_DM(uint8_t id, uint8_t ctrl_mode)
 	else if(ctrl_mode==2)	Tx_Msg.StdId=0x100+DM4310_ID;	 //set chassis motor current.
 	else if(ctrl_mode==3)	Tx_Msg.StdId=0x200+DM4310_ID;	 //set chassis motor current.
 
-	Tx_Msg.IDE=CAN_ID_STD;		  // ²»Ê¹ÓÃÀ©Õ¹±êÊ¶·û
-	Tx_Msg.RTR=CAN_RTR_DATA;		  // ÏûÏ¢ÀàÐÍÎªÊý¾ÝÖ¡£¬Ò»Ö¡8Î»
+	Tx_Msg.IDE=CAN_ID_STD;		  // ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½Ê¶ï¿½ï¿½
+	Tx_Msg.RTR=CAN_RTR_DATA;		  // ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½Ò»Ö¡8Î»
 	Tx_Msg.DLC=8; 
 	
 	TX_Data[0] = 0xff;
@@ -624,5 +625,5 @@ void disable_DM(uint8_t id, uint8_t ctrl_mode)
 	TX_Data[6] = 0xff;
 	TX_Data[7] = 0xfd;
 
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);    //½«Êý¾Ý´¢´æ½øÓÊÏäFIFOx
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);    //ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½FIFOx
 }

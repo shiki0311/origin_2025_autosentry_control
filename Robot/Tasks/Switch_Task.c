@@ -8,7 +8,7 @@
 #include "SolveTrajectory.h"
 
 #define DIAL_SPEED_LOW  4500//3000
-#define DIAL_SPEED_HIGH 5000
+#define DIAL_SPEED_HIGH 4000
 
 
 RC_ctrl_t rc_ctrl_last;
@@ -99,8 +99,8 @@ void Switch_Task(void const * argument)
 //					dial_speed=DIAL_SPEED_HIGH;
 //				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // 右开关在上且识别到目标：平时测试自瞄
 				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID)
-					dial_speed=DIAL_SPEED_HIGH;
-				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0) // 左开关在上且识别到目标：比赛
+					dial_speed=DIAL_SPEED_HIGH;	
+				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0 && Game_Status.game_progress==4) // 左开关在上且识别到目标：比赛
 				{
 //					if( tar_position[idx].yaw < 0.7  && tar_position[idx].yaw > -0.6 && fabs(AutoAim_Data_Receive.yaw_aim)<7 ) // 2.5m打前哨
 //					{
