@@ -36,6 +36,7 @@
 #include "remote_control.h"
 #include "bsp_can.h"
 #include "bsp_tim.h"
+#include "bsp_buzzer.h"
 #include "referee.h"
 #include "referee_usart_task.h"
 /* USER CODE END Includes */
@@ -66,41 +67,41 @@ void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 char* itoa(int num,char* str,int radix)
 {
-    char index[]="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";//Ë÷Òý±í
-    unsigned unum;//´æ·ÅÒª×ª»»µÄÕûÊýµÄ¾ø¶ÔÖµ,×ª»»µÄÕûÊý¿ÉÄÜÊÇ¸ºÊý
-    int i=0,j,k;//iÓÃÀ´Ö¸Ê¾ÉèÖÃ×Ö·û´®ÏàÓ¦Î»£¬×ª»»Ö®ºóiÆäÊµ¾ÍÊÇ×Ö·û´®µÄ³¤¶È£»×ª»»ºóË³ÐòÊÇÄæÐòµÄ£¬ÓÐÕý¸ºµÄÇé¿ö£¬kÓÃÀ´Ö¸Ê¾µ÷ÕûË³ÐòµÄ¿ªÊ¼Î»ÖÃ;jÓÃÀ´Ö¸Ê¾µ÷ÕûË³ÐòÊ±µÄ½»»»¡£
+    char index[]="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    unsigned unum;//ï¿½ï¿½ï¿½Òª×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½Öµ,×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½
+    int i=0,j,k;//iï¿½ï¿½ï¿½ï¿½Ö¸Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦Î»ï¿½ï¿½×ªï¿½ï¿½Ö®ï¿½ï¿½iï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½Ä³ï¿½ï¿½È£ï¿½×ªï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½kï¿½ï¿½ï¿½ï¿½Ö¸Ê¾ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½Ä¿ï¿½Ê¼Î»ï¿½ï¿½;jï¿½ï¿½ï¿½ï¿½Ö¸Ê¾ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½Ê±ï¿½Ä½ï¿½ï¿½ï¿½ï¿½ï¿½
  
-    //»ñÈ¡Òª×ª»»µÄÕûÊýµÄ¾ø¶ÔÖµ
-    if(radix==10&&num<0)//Òª×ª»»³ÉÊ®½øÖÆÊý²¢ÇÒÊÇ¸ºÊý
+    //ï¿½ï¿½È¡Òª×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½Öµ
+    if(radix==10&&num<0)//Òª×ªï¿½ï¿½ï¿½ï¿½Ê®ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½
     {
-        unum=(unsigned)-num;//½«numµÄ¾ø¶ÔÖµ¸³¸øunum
-        str[i++]='-';//ÔÚ×Ö·û´®×îÇ°ÃæÉèÖÃÎª'-'ºÅ£¬²¢ÇÒË÷Òý¼Ó1
+        unum=(unsigned)-num;//ï¿½ï¿½numï¿½Ä¾ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½unum
+        str[i++]='-';//ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª'-'ï¿½Å£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1
     }
-    else unum=(unsigned)num;//ÈôÊÇnumÎªÕý£¬Ö±½Ó¸³Öµ¸øunum
+    else unum=(unsigned)num;//ï¿½ï¿½ï¿½ï¿½numÎªï¿½ï¿½ï¿½ï¿½Ö±ï¿½Ó¸ï¿½Öµï¿½ï¿½unum
  
-    //×ª»»²¿·Ö£¬×¢Òâ×ª»»ºóÊÇÄæÐòµÄ
+    //×ªï¿½ï¿½ï¿½ï¿½ï¿½Ö£ï¿½×¢ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     do
     {
-        str[i++]=index[unum%(unsigned)radix];//È¡unumµÄ×îºóÒ»Î»£¬²¢ÉèÖÃÎªstr¶ÔÓ¦Î»£¬Ö¸Ê¾Ë÷Òý¼Ó1
-        unum/=radix;//unumÈ¥µô×îºóÒ»Î»
+        str[i++]=index[unum%(unsigned)radix];//È¡unumï¿½ï¿½ï¿½ï¿½ï¿½Ò»Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªstrï¿½ï¿½Ó¦Î»ï¿½ï¿½Ö¸Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1
+        unum/=radix;//unumÈ¥ï¿½ï¿½ï¿½ï¿½ï¿½Ò»Î»
  
-    }while(unum);//Ö±ÖÁunumÎª0ÍË³öÑ­»·
+    }while(unum);//Ö±ï¿½ï¿½unumÎª0ï¿½Ë³ï¿½Ñ­ï¿½ï¿½
  
-    str[i]='\0';//ÔÚ×Ö·û´®×îºóÌí¼Ó'\0'×Ö·û£¬cÓïÑÔ×Ö·û´®ÒÔ'\0'½áÊø¡£
+    str[i]='\0';//ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½'\0'ï¿½Ö·ï¿½ï¿½ï¿½cï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½'\0'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  
-    //½«Ë³Ðòµ÷Õû¹ýÀ´
-    if(str[0]=='-') k=1;//Èç¹ûÊÇ¸ºÊý£¬·ûºÅ²»ÓÃµ÷Õû£¬´Ó·ûºÅºóÃæ¿ªÊ¼µ÷Õû
-    else k=0;//²»ÊÇ¸ºÊý£¬È«²¿¶¼Òªµ÷Õû
+    //ï¿½ï¿½Ë³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    if(str[0]=='-') k=1;//ï¿½ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å²ï¿½ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó·ï¿½ï¿½Åºï¿½ï¿½æ¿ªÊ¼ï¿½ï¿½ï¿½ï¿½
+    else k=0;//ï¿½ï¿½ï¿½Ç¸ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½
  
-    char temp;//ÁÙÊ±±äÁ¿£¬½»»»Á½¸öÖµÊ±ÓÃµ½
-    for(j=k;j<=(i-1)/2;j++)//Í·Î²Ò»Ò»¶Ô³Æ½»»»£¬iÆäÊµ¾ÍÊÇ×Ö·û´®µÄ³¤¶È£¬Ë÷Òý×î´óÖµ±È³¤¶ÈÉÙ1
+    char temp;//ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÖµÊ±ï¿½Ãµï¿½
+    for(j=k;j<=(i-1)/2;j++)//Í·Î²Ò»Ò»ï¿½Ô³Æ½ï¿½ï¿½ï¿½ï¿½ï¿½iï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½Ä³ï¿½ï¿½È£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½È³ï¿½ï¿½ï¿½ï¿½ï¿½1
     {
-        temp=str[j];//Í·²¿¸³Öµ¸øÁÙÊ±±äÁ¿
-        str[j]=str[i-1+k-j];//Î²²¿¸³Öµ¸øÍ·²¿
-        str[i-1+k-j]=temp;//½«ÁÙÊ±±äÁ¿µÄÖµ(ÆäÊµ¾ÍÊÇÖ®Ç°µÄÍ·²¿Öµ)¸³¸øÎ²²¿
+        temp=str[j];//Í·ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½
+        str[j]=str[i-1+k-j];//Î²ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½Í·ï¿½ï¿½
+        str[i-1+k-j]=temp;//ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ(ï¿½ï¿½Êµï¿½ï¿½ï¿½ï¿½Ö®Ç°ï¿½ï¿½Í·ï¿½ï¿½Öµ)ï¿½ï¿½ï¿½ï¿½Î²ï¿½ï¿½
     }
  
-    return str;//·µ»Ø×ª»»ºóµÄ×Ö·û´®
+    return str;//ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½
  
 }
 
@@ -122,6 +123,7 @@ void Transmit_float(UART_HandleTypeDef *huart,float* data)
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -129,7 +131,6 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -159,6 +160,7 @@ int main(void)
   MX_TIM1_Init();
   MX_CRC_Init();
   MX_TIM8_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	MX_USB_DEVICE_Init();
 	HAL_TIM_Base_Start_IT(&htim14);
@@ -173,9 +175,8 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 	TIM3->CCR3=1000;//open laser
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-	
 	HAL_TIM_PWM_Start(&htim10, TIM_CHANNEL_1);
-	
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 	can_filter_init();
 	delay_init();
 	remote_control_init();
@@ -183,15 +184,18 @@ int main(void)
 	fifo_s_init(&Referee_FIFO, Referee_FIFO_Buffer, REFEREE_FIFO_BUF_LENGTH);
 	Referee_StructInit();
 	Referee_UARTInit(Referee_Buffer[0], Referee_Buffer[1], REFEREE_USART_RX_BUF_LENGHT);
+	
+	buzzer_play_eva();
   /* USER CODE END 2 */
 
-  /* Call init function for freertos objects (in freertos.c) */
+  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
 
   /* Start scheduler */
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)

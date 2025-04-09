@@ -17,8 +17,8 @@
 #define ROTATE_VY_MAX 3000
 //#define ROTATE_WZ_MAX 25000
 #define ROTATE_WZ_MAX 22000
-#define ROTATE_WZ_MIN -22000
-
+#define ROTATE_WZ_MIN -10000
+#define ROTATE_WEAK   0.5f
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 4450
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO 6498
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO 2402
@@ -27,7 +27,6 @@
 //#define BUFFER_TOTAL_CURRENT_LIMIT      16000.0f
 #define BUFFER_TOTAL_CURRENT_LIMIT      30000.0f
 #define POWER_TOTAL_CURRENT_LIMIT       30000.0f
-  
 #define WARNING_POWER_BUFF  60.0f
 
 //#define 	SPEED_SET 3000
@@ -60,6 +59,17 @@ fp32 toque_coefficient = 1.99688994e-6f; // (20/16384)*(0.3)*(187/3591)/9.55
 fp32 k1 = 1.23e-07;						 // k1
 fp32 k2 = 1.453e-07;					 // k2
 fp32 constant = 4.081f;
+/*****************************************************/
+
+/*************************中弹掉血切换小陀螺模式（2025赛季节省功率特供版）****************************/
+typedef enum {
+    HEALTH_NORMAL,      // 正常模式
+    HEALTH_HURT       // 受伤旋转模式 
+} health_state_t;
+
+health_state_t health_state = HEALTH_NORMAL;
+uint32_t hurt_start_time = 0;
+uint16_t last_health = 0;
 /*****************************************************/
 
 CAN_TxHeaderTypeDef  chassis_tx_message;
@@ -157,25 +167,6 @@ void Chassis_Motor_Init(void)
 
 void power_control()
 {
-//	uint8_t level_to_power_add=0.0f;
-//	static double toq_coefficient=1.99688994e-6;
-//	static double k1=6.773e-07;
-//	static double k2=9.9e-08;
-//	static double constant=3.766;
-//	init_chassis_power=0.0;
-//	for(int i=0;i<4;i++){
-//		double x=motor_measure_chassis[i].given_current;
-//		double y=motor_measure_chassis[i].speed_rpm;
-//		init_3508_power[i]=(toq_coefficient*x*y+k1*y*y+k2*x*x+constant);
-//		if(init_3508_power[i]<0){
-//			init_3508_power[i]=0;
-//		}
-//		init_chassis_power+=init_3508_power[i];
-
-//	}
-//	if(init_chassis_power<20.0f){
-//		init_chassis_power*=0.3f;
-//	}
 	fp32 scaled_give_power[4];
 
 	init_chassis_power = 0;
@@ -240,7 +231,6 @@ void Chassis_Motor_Data_Update(void)
 		chassis_m3508_last_speed[i]=motor_measure_chassis[i].speed_rpm;
 	}
 //	chassis_power_limit=Game_Robot_State.chassis_power_limit; // 底盘功率限制
-	chassis_power_limit=60;
 	chassis_power=init_chassis_power;              // 底盘目前功率
 	chassis_power_buffer=Power_Heat_Data.buffer_energy; // 底盘缓冲能量
 }
@@ -256,7 +246,35 @@ static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 
     wheel_speed[3] = ( -vx_set + vy_set) + (CHASSIS_WZ_SET_SCALE - 1.0f) * MOTOR_DISTANCE_TO_CENTER * wz_set;
 }
 
+void Health_Monitor_Update(void)
+{
+    // 获取当前血量
+    uint16_t current_health = Game_Robot_State.current_HP;
 
+    switch(health_state)
+    {
+    case HEALTH_NORMAL:
+        if(current_health < last_health && Robot_Hurt.hurt_type==0 && Robot_Hurt.armor_type!=0) // 检测到被弹丸攻击
+        {
+            health_state = HEALTH_HURT;
+            hurt_start_time = xTaskGetTickCount();
+        }
+        break;
+        
+    case HEALTH_HURT:
+        if(current_health < last_health && Robot_Hurt.hurt_type==0 && Robot_Hurt.armor_type!=0) // 持续被攻击
+        {
+            hurt_start_time = xTaskGetTickCount(); // 重置计时
+        }
+        else if(xTaskGetTickCount() - hurt_start_time > pdMS_TO_TICKS(3000))
+        {
+            health_state = HEALTH_NORMAL;
+        }
+        break;
+    }
+    
+    last_health = current_health; // 更新血量记录
+}
 
 float Limit_To_180(float in){
 	while(in < -180 || in > 180){		//重复处理，直到弧度值落入[-π,π]区间
@@ -284,35 +302,6 @@ fp32  Angle_Z_Suit_ZERO_Get(fp32 Target_Angle,fp32 Target_Speed)
 		return CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO ;
 	if(angle_front_err>-135&&angle_front_err<=-45)
 		return CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO ;
-	
-	//获取距离最小的两个零点，即左和右(代码没法执行到这里，所以直接注释了）
-//	if(angle_front_err>=0||angle_front_err<90)
-//	{
-//    angle_left_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO;
-//		angle_right_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
-//	}
-//	if(angle_front_err>=90||angle_front_err<180)
-//	{
-//    angle_left_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
-//		angle_right_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO;
-//	}
-//	if(angle_front_err>=-90||angle_front_err<0)
-//	{
-//    angle_left_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
-//		angle_right_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO;
-//	}
-//	if(angle_front_err>=-180||angle_front_err<-90)
-//	{
-//    angle_left_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO;
-//		angle_right_zero=CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
-//	}
-//	// 如果此时编码器速度不小，零点会向左或右漂移
-//	if(Target_Speed>=15) 
-//		return angle_left_zero;
-//	if(Target_Speed<=-15)
-//	  return angle_right_zero;
-//	return angle_minerr_zero;
-	
 }
 
 fp32 factor[3]={1.54,1.54,1.54};
@@ -322,18 +311,7 @@ fp32 vx_last=0,vy_last=0,wz_last=0;
 void chassis_vector_set(void)
 {
 	rc_num[0]=rc_ctrl.rc.s[1];
-//	if(rc_num[0]==0||rc_num[1]==0||(rc_num[0]!=rc_num[1] && rc_num[1]==RC_SW_UP)) // 刚启动或者进行过状态切换？这个发送是发送到哪的？
-//	{
-//		for(int i=0;i<=3;i++)
-//		flag_code[i]=0;
-//		Chassis_Data_Tramsit.x=0;
-//		Chassis_Data_Tramsit.y=0;
-//		Chassis_Data_Tramsit.z=0;
-//		Chassis_Data_Tramsit.vx=0;
-//		Chassis_Data_Tramsit.vy=0;
-//		Chassis_Data_Tramsit.wz=0;
-//		rc_num[1]=rc_num[0];
-//	}
+
 	
 	if(rc_ctrl.rc.s[1]==RC_SW_DOWN)//stop
 	{ 
@@ -445,9 +423,14 @@ void chassis_vector_set(void)
 			chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
 			chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
 
-			rotate_sine_angle+=(0.2/rotate_sine_T*360);
-			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
-			chassis_control.wz=-(0.7*(float)Rotate_Data_Receive.rotate+0.3*(float)Rotate_Data_Receive.rotate*arm_sin_f32((rotate_sine_angle*PI)/180));
+//			rotate_sine_angle+=(0.001/rotate_sine_T*360);
+//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
+			if(health_state==HEALTH_HURT){
+			chassis_control.wz=-(float)Rotate_Data_Receive.rotate;
+			}
+			else{
+			chassis_control.wz=-(float)Rotate_Data_Receive.rotate*ROTATE_WEAK;
+			}
 			chassis_follow_gimbal_zerochange_flag=1;
 		}
 	}
@@ -596,15 +579,12 @@ void Chassis_Task(void const * argument)
 		Chassis_Motor_Data_Update();
 		
 		fp32 motor_speed[4];
+		
+		Health_Monitor_Update();
 	
 		chassis_vector_set();		
 		
-		if(chassis_follow_gimbal_changing==1) //好像永远无法进入这个条件，没有置1的代码
-		{
-			chassis_control.vx=0;
-			chassis_control.vy=0;
-			chassis_control.wz=0;
-		}
+		
 			
 		
 		chassis_vector_to_mecanum_wheel_speed(chassis_control.vx,chassis_control.vy,chassis_control.wz,motor_speed);
@@ -623,21 +603,13 @@ void Chassis_Task(void const * argument)
 			chassis_m3508[i].give_current=chassis_m3508[i].pid.out;
 		}
 		
-//		chassis_m3508[0].give_current*=1.15f;
-//		chassis_m3508[1].give_current*=1.0f;
-//		chassis_m3508[2].give_current*=1.0f;
-//		chassis_m3508[3].give_current*=1.0f;
-//		if(fifo_s_isempty(&Referee_FIFO)!=0||Game_Robot_State.mains_power_chassis_output==0x01)
-//		{
-			
-//		if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)) //需要打开detect_task
-				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //需要打开detect_task
+//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //?????detect_task
+		if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE))
 				CAN_Chassis_CMD(0,0,0,0);
 			else
 			{
-				chassis_feedback_update();
+//				chassis_feedback_update();
 				power_control();
-//				chassis_power_control();
 //				chassis_power_cap_control();
 				CAN_Chassis_CMD(chassis_m3508[0].give_current,chassis_m3508[1].give_current,chassis_m3508[2].give_current,chassis_m3508[3].give_current);
 			}

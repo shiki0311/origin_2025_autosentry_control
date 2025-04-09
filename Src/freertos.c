@@ -75,7 +75,7 @@ void Chassis_Task(void const * argument);
 void Gimbal_Task(void const * argument);
 void Shoot_Task(void const * argument);
 void kalman_tracking_task(void const * argument);
-void manifold_usbd_task(void const * argument);
+void manifold_usart_task(void const * argument);
 void referee_usart_task(void const * argument);
 void Switch_Task(void const * argument);
 void Ear_Task(void const * argument);
@@ -147,7 +147,7 @@ void MX_FREERTOS_Init(void) {
   INS_TASKHandle = osThreadCreate(osThread(INS_TASK), NULL);
 
   /* definition and creation of LED_TASK */
-  osThreadDef(LED_TASK, LED_Task, osPriorityLow, 0, 128);
+  osThreadDef(LED_TASK, LED_Task, osPriorityNormal, 0, 128);
   LED_TASKHandle = osThreadCreate(osThread(LED_TASK), NULL);
 
   /* definition and creation of Chassis_TASK */
@@ -162,13 +162,13 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(Shoot_TASK, Shoot_Task, osPriorityNormal, 0, 512);
   Shoot_TASKHandle = osThreadCreate(osThread(Shoot_TASK), NULL);
 
-//  /* definition and creation of kalman_tracking */
+  /* definition and creation of kalman_tracking */
   osThreadDef(kalman_tracking, kalman_tracking_task, osPriorityNormal, 0, 512);
   kalman_trackingHandle = osThreadCreate(osThread(kalman_tracking), NULL);
 
   /* definition and creation of manifold_usart */
-  osThreadDef(manifold_usbd, manifold_usbd_task, osPriorityBelowNormal, 0, 512);
-  manifold_usartHandle = osThreadCreate(osThread(manifold_usbd), NULL);
+  osThreadDef(manifold_usart, manifold_usart_task, osPriorityBelowNormal, 0, 512);
+  manifold_usartHandle = osThreadCreate(osThread(manifold_usart), NULL);
 
   /* definition and creation of referee_usart */
   osThreadDef(referee_usart, referee_usart_task, osPriorityAboveNormal, 0, 256);
@@ -305,7 +305,7 @@ __weak void kalman_tracking_task(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_manifold_usart_task */
-__weak void manifold_usbd_task(void const * argument)
+__weak void manifold_usart_task(void const * argument)
 {
   /* USER CODE BEGIN manifold_usart_task */
   /* Infinite loop */

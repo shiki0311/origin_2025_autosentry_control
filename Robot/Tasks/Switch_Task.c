@@ -8,7 +8,7 @@
 #include "SolveTrajectory.h"
 
 #define DIAL_SPEED_LOW  4500//3000
-#define DIAL_SPEED_HIGH 4000
+#define DIAL_SPEED_HIGH 4500
 
 
 RC_ctrl_t rc_ctrl_last;
@@ -26,7 +26,7 @@ uint8_t autoaim_shoot_freq=0;
 uint8_t dial_mode_last=0;
 uint8_t dial_mode_test;
 
-uint32_t shoot_power_good_cnt=0; //Ä¦²ÁÂÖ»ºÂýÆô¶¯
+uint32_t shoot_power_good_cnt=0; 
 uint8_t if_predict=0;//0:no,1:yes
 
 float auto_aim_pitch_offset=0;
@@ -42,7 +42,7 @@ void Switch_Task(void const * argument)
 {
 	while(1)
 	{	
-		//180 rotate 180¡ãµôÍ· ºÃÏñÃ»·¨½øÈëÕâÁ½¸öif £¬switch_180_cntÃ»ÓÐÆäËû³ÌÐò¸Ä±ä
+		//180 rotate 180ï¿½ï¿½ï¿½Í· ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½if ï¿½ï¿½switch_180_cntÃ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½
 //		if(switch_180_cnt<500)
 //		{
 //			switch_180_cnt++;
@@ -59,7 +59,7 @@ void Switch_Task(void const * argument)
 		
 		//predict
 		
-//			Game_Robot_State.power_management_shooter_output=0x01; // ÏÈÉèÖÃÉÏ£¬·½±ãÆ½Ê±µ÷ÊÔ£¿
+//			Game_Robot_State.power_management_shooter_output=0x01; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï£ï¿½ï¿½ï¿½ï¿½ï¿½Æ½Ê±ï¿½ï¿½ï¿½Ô£ï¿½
 		
 //		if(Game_Robot_State.shooter_id1_17mm_cooling_limit>=200)
 //		{
@@ -76,12 +76,11 @@ void Switch_Task(void const * argument)
 			shoot_flag=0;
 			
 		}		
-		//fric Èç¹ûÃ»ÓÐ¸ø·¢ÉäÏµÍ³¹©µç£¬¾ÍÊ²Ã´¶¼²»×ª
+	
 		if((Game_Robot_State.power_management_shooter_output==0x01) && shoot_power_good_cnt<=20 ) 
-			shoot_power_good_cnt++;//delay 2000*2 ms ÕâÀïµÄÑÓÊ±ÓÐÊ²Ã´ÓÃ£¿
-				
+			shoot_power_good_cnt++;//delay 				
 			
-		if(((rc_ctrl.rc.s[1]==RC_SW_UP)||(rc_ctrl.rc.s[1]==RC_SW_MID))&&(shoot_power_good_cnt>=20)) //Ä¦²ÁÂÖ»ºÂýÆô¶¯Íê±Ï
+		if(((rc_ctrl.rc.s[1]==RC_SW_UP)||(rc_ctrl.rc.s[1]==RC_SW_MID))&&(shoot_power_good_cnt>=20)) //Ä¦ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		{
 			fric_state=1;
 		}
@@ -90,19 +89,19 @@ void Switch_Task(void const * argument)
 			fric_state=0;	
 		}
 
-		if(shoot_flag==1)//Ä¦²ÁÂÖ×ªËÙ´ïµ½£¬¿ÉÒÔ×ª²¨µ°ÅÌ
+		if(shoot_flag==1)
 		{
 			//dial
-			if(dial_mode==0) // Á¬·¢
+			if(dial_mode==0)
 			{
-//				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID) //ÓÒ¿ª¹ØÔÚÉÏÇÒÃ»ÓÐÊ¶±ðµ½Ä¿±ê£ºÆ½Ê±²âÊÔ´òµ¯
+//				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID) //ï¿½Ò¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ê¶ï¿½ï¿½Ä¿ï¿½ê£ºÆ½Ê±ï¿½ï¿½ï¿½Ô´ï¿½
 //					dial_speed=DIAL_SPEED_HIGH;
-//				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // ÓÒ¿ª¹ØÔÚÉÏÇÒÊ¶±ðµ½Ä¿±ê£ºÆ½Ê±²âÊÔ×ÔÃé
+//				 if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID && AutoAim_Data_Receive.fire_or_not==1) // ï¿½Ò¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¶ï¿½ï¿½Ä¿ï¿½ê£ºÆ½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 				if(rc_ctrl.rc.s[0]==RC_SW_UP && rc_ctrl.rc.s[1]==RC_SW_MID)
 					dial_speed=DIAL_SPEED_HIGH;	
-				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0 && Game_Status.game_progress==4) // ×ó¿ª¹ØÔÚÉÏÇÒÊ¶±ðµ½Ä¿±ê£º±ÈÈü
+				else if(rc_ctrl.rc.s[1]==RC_SW_UP && AutoAim_Data_Receive.track != 0 && Game_Status.game_progress==4) // ï¿½ó¿ª¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¶ï¿½ï¿½Ä¿ï¿½ê£ºï¿½ï¿½ï¿½ï¿½
 				{
-//					if( tar_position[idx].yaw < 0.7  && tar_position[idx].yaw > -0.6 && fabs(AutoAim_Data_Receive.yaw_aim)<7 ) // 2.5m´òÇ°ÉÚ
+//					if( tar_position[idx].yaw < 0.7  && tar_position[idx].yaw > -0.6 && fabs(AutoAim_Data_Receive.yaw_aim)<7 ) // 2.5mï¿½ï¿½Ç°ï¿½ï¿½
 //					{
 //						if(AutoAim_Data_Receive.armor_num==3) dial_speed=DIAL_SPEED_LOW;
 //						else dial_speed=DIAL_SPEED_HIGH;
@@ -116,20 +115,18 @@ void Switch_Task(void const * argument)
 				else
 					dial_speed=0;
 			}
-			else // µ¥·¢Ä£Ê½
+			else //
 			{       
-				// Èç¹ûÓÐ½øÐÐ·¢ÉäµÄ×´Ì¬ÇÐ»»£¨¿ª¹Ø²¦µ¯ÅÌ£©ÏÈÈÃ²¦µ¯ÅÌ¶ÌÔÝÍ£Ò»ÏÂ
 				if((!(rc_ctrl_last.rc.s[0]==RC_SW_MID)&&(rc_ctrl.rc.s[0]==RC_SW_MID))||(!(rc_ctrl_last.rc.s[0]==RC_SW_UP)&&(rc_ctrl.rc.s[0]==RC_SW_UP)))
 				{
-					if(if_single_hit==0) // Í¨¹ýshoot_taskµÄÒ»¶Î´úÂë¡£¿ØÖÆµ¥·¢µÄÊ±¼ä£¬±£Ö¤²»»á±ä³ÉÁ¬·¢
+					if(if_single_hit==0) //
 					{
 						if_single_hit=1;
 						shoot_m2006[0].angle_set=(shoot_m2006[0].angle+8192*45/10);
 						shoot_m2006[1].angle_set=(shoot_m2006[1].angle+8192*45/10);
 					}
 				}
-				// Èç¹ûÔÚÊÖ¶¯¿ØÖÆ·¢ÉäÊ±£¬ÓÐ×ÔÃéÐÅÏ¢´«Èë£¬²¢ÇÒÊÇµ¥·¢Ä£Ê½£¬»áÖ´ÐÐÒÔÏÂ´úÂë
-//				if(autoaim_last_shoot_freq==0&&AutoAim_Data_Receive.Shoot_Freq!=0&&rc_ctrl.rc.s[0]==RC_SW_UP)//antitop automantic firing
+				// //				if(autoaim_last_shoot_freq==0&&AutoAim_Data_Receive.Shoot_Freq!=0&&rc_ctrl.rc.s[0]==RC_SW_UP)//antitop automantic firing
 //				if(autoaim_last_shoot_freq==0&&rc_ctrl.rc.s[1]==RC_SW_UP&&(rc_ctrl.rc.s[0]==RC_SW_UP||rc_ctrl.rc.s[0]==RC_SW_MID))
 				{
 //					autoaim_shoot_freq=AutoAim_Data_Receive.Shoot_Freq;//autoaim shoot frequence update
@@ -143,13 +140,13 @@ void Switch_Task(void const * argument)
 			}
 		}		
 		
-//		if(Autoaim_Mode==0||(Autoaim_Mode==3&&AutoAim_Data_Receive.Aimed_ID<9)) dial_mode=0; // ÆÕÍ¨×ÔÃéÄ£Ê½ »ò ·´Ð¡ÍÓÂÝÇÒIDÐ¡ÓÚ9£¿ Á¬·¢Ä£Ê½
-//		else if(Autoaim_Mode==1||Autoaim_Mode==2||(Autoaim_Mode==3&&AutoAim_Data_Receive.Aimed_ID>=9)) dial_mode=1; // ´ò´óÐ¡ÄÜÁ¿»ú¹Ø »ò ·´Ð¡ÍÓÂÝÇÒID´óÓÚ9£¿µ¥·¢Ä£Ê½
+//		if(Autoaim_Mode==0||(Autoaim_Mode==3&&AutoAim_Data_Receive.Aimed_ID<9)) dial_mode=0; 
+//		else if(Autoaim_Mode==1||Autoaim_Mode==2||(Autoaim_Mode==3&&AutoAim_Data_Receive.Aimed_ID>=9)) dial_mode=1; 
 		
-		if(Autoaim_Mode==0||(Autoaim_Mode==3)) dial_mode=0; // ÆÕÍ¨×ÔÃéÄ£Ê½ »ò ·´Ð¡ÍÓÂÝÇÒIDÐ¡ÓÚ9£¿ Á¬·¢Ä£Ê½
-		else if(Autoaim_Mode==1||Autoaim_Mode==2||Autoaim_Mode==3) dial_mode=1; // ´ò´óÐ¡ÄÜÁ¿»ú¹Ø »ò ·´Ð¡ÍÓÂÝÇÒID´óÓÚ9£¿µ¥·¢Ä£Ê½
+		if(Autoaim_Mode==0||(Autoaim_Mode==3)) dial_mode=0; 
+		else if(Autoaim_Mode==1||Autoaim_Mode==2||Autoaim_Mode==3) dial_mode=1; 
 		
-		if(dial_mode==1&&dial_mode_last==0)  //ÇÐ»»µ¥Á¬·¢Ä£Ê½µÄÊ±ºò»ºÒ»»º
+		if(dial_mode==1&&dial_mode_last==0)  
 		{
 			shoot_m2006[0].angle_set=shoot_m2006[0].angle;
 			shoot_m2006[1].angle_set=shoot_m2006[1].angle;

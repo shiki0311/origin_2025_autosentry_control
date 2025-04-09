@@ -22,7 +22,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_cdc_if.h"
 
-
 /* USER CODE BEGIN INCLUDE */
 #include "Nmanifold_usbd_task.h"
 

@@ -47,7 +47,7 @@ void Ear_Task(void const * argument)
 	
 //	/* ²¥·Å¿ª»úÒôÀÖ */
 //	vTaskDelay(500);
-//	Buzzer_PlayMusic(Music_MiXueBingCheng);
+//Buzzer_PlayMusic(Music_MiXueBingCheng);
 //	vTaskDelay(500);
 	
 	while(1)

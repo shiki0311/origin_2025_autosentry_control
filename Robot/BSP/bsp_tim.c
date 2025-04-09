@@ -1,5 +1,6 @@
 #include "bsp_tim.h"
 
+
 float fric_speed1=0,fric_speed2=0;
 uint8_t if_encoder_first_run=1;
 

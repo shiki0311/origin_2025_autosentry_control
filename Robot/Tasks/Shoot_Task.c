@@ -50,7 +50,7 @@ motor_measure_t shoot_motor_measure[2];
 uint16_t shoot_flag=0,shoot_cnt=0,safe_flag=0;
 
 int target_rpm=0;
-int target_rpm_define=6400;  //摩擦轮目标转速6400
+int target_rpm_define=6300;  //摩擦轮目标转速6400
 
 void Shoot_Motor_Init(void)
 {

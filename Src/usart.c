@@ -24,19 +24,19 @@
 //#include "stdio.h"
 //#if 1
 //#pragma import(__use_no_semihosting)             
-////±ê×¼¿âÐèÒªµÄÖ§³Öº¯Êý                 
+////ï¿½ï¿½×¼ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Ö§ï¿½Öºï¿½ï¿½ï¿½                 
 //struct __FILE 
 //{ 
 //	int handle; 
 //}; 
 
 //FILE __stdout;       
-////¶¨Òå_sys_exit()ÒÔ±ÜÃâÊ¹ÓÃ°ëÖ÷»úÄ£Ê½    
+////ï¿½ï¿½ï¿½ï¿½_sys_exit()ï¿½Ô±ï¿½ï¿½ï¿½Ê¹ï¿½Ã°ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½    
 //void _sys_exit(int x) 
 //{ 
 //	x = x; 
 //} 
-////ÖØ¶¨Òåfputcº¯Êý 
+////ï¿½Ø¶ï¿½ï¿½ï¿½fputcï¿½ï¿½ï¿½ï¿½ 
 //int fputc(int ch, FILE *f)
 //{      
 //	
@@ -68,7 +68,7 @@ void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 921600;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
