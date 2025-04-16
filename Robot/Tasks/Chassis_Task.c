@@ -97,11 +97,11 @@ static void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int1
 
 	HAL_StatusTypeDef status;
 	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
-	// if (status != HAL_OK)
-	// {
-	// 	// ???????????
-	// 	CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
-	// }
+	if (status != HAL_OK)
+	{
+		// ???????????
+		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
+	}
 }
 	void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
 	{

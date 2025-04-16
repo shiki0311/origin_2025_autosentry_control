@@ -33,7 +33,7 @@
 #define YAW_MOTOR_ANGLE_PID_MAX_OUT 1200.0f
 #define YAW_MOTOR_ANGLE_PID_MAX_IOUT 50.0f
 
-#define YAW_MOTOR_AUTO_AIM_PID_KP 8.0f
+#define YAW_MOTOR_AUTO_AIM_PID_KP 25.0f
 #define YAW_MOTOR_AUTO_AIM_PID_KI 0.0001f
 #define YAW_MOTOR_AUTO_AIM_PID_KD 50.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 800.0f
@@ -84,11 +84,11 @@ static void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16
 
 	HAL_StatusTypeDef status;
 	status = HAL_CAN_AddTxMessage(&GIMBAL_CAN, &gimbal_tx_message, gimbal_can_send_data, &send_mail_box);
-//	if (status != HAL_OK)
-//	{
-//		// ����ʧ��ʱ���
-//		CAN_TxQueue_Push(&gimbal_tx_message, gimbal_can_send_data);
-//	}
+	if (status != HAL_OK)
+	{
+		// ����ʧ��ʱ���
+		CAN_TxQueue_Push(&gimbal_tx_message, gimbal_can_send_data);
+	}
 }
 
 static float angle_error_calc(float target, float current)

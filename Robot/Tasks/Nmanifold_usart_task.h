@@ -107,7 +107,7 @@ typedef struct{
 	float chassis_follow_gimbal_angle;
 }__attribute__((__packed__)) Chassis_Gimbal_Angle_TX;//通信协议数据流前段数据
 
-typedef uint8_t Working_Mode;//操作模式
+typedef uint8_t Working_Mode;//
 
 typedef struct{
 	uint8_t Switch_off;				//是否启用拨码开关 1不启用，2启用
