@@ -17,7 +17,6 @@
 #define CHASSIS_CAN hcan1
 
 #define MOTOR_DISTANCE_TO_CENTER 0.231f//245mm
-#define CHASSIS_WZ_SET_SCALE 0.0f
 
 
 typedef struct
@@ -35,9 +34,10 @@ typedef struct
 	fp32 vy;
 	fp32 wz;
 	
-  fp32 chassis_follow_gimbal_angle;	 // 底盘跟随云台的相差值
+  fp32 chassis_follow_gimbal_angle;	 
 	pid_type_def chassis_follow_gimbal_pid;
 }chassis_control_t;
+
 extern double init_chassis_power;
 extern chassis_motor_t chassis_m3508[4];
 extern chassis_control_t chassis_control;

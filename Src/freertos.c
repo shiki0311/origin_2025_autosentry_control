@@ -58,7 +58,6 @@ osThreadId LED_TASKHandle;
 osThreadId Chassis_TASKHandle;
 osThreadId Gimbal_TASKHandle;
 osThreadId Shoot_TASKHandle;
-osThreadId kalman_trackingHandle;
 osThreadId manifold_usartHandle;
 osThreadId referee_usartHandle;
 osThreadId SWITCH_TASKHandle;
@@ -74,7 +73,6 @@ void LED_Task(void const * argument);
 void Chassis_Task(void const * argument);
 void Gimbal_Task(void const * argument);
 void Shoot_Task(void const * argument);
-void kalman_tracking_task(void const * argument);
 void manifold_usart_task(void const * argument);
 void referee_usart_task(void const * argument);
 void Switch_Task(void const * argument);
@@ -161,10 +159,6 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of Shoot_TASK */
   osThreadDef(Shoot_TASK, Shoot_Task, osPriorityNormal, 0, 512);
   Shoot_TASKHandle = osThreadCreate(osThread(Shoot_TASK), NULL);
-
-  /* definition and creation of kalman_tracking */
-  osThreadDef(kalman_tracking, kalman_tracking_task, osPriorityNormal, 0, 512);
-  kalman_trackingHandle = osThreadCreate(osThread(kalman_tracking), NULL);
 
   /* definition and creation of manifold_usart */
   osThreadDef(manifold_usart, manifold_usart_task, osPriorityBelowNormal, 0, 512);
@@ -278,24 +272,6 @@ __weak void Shoot_Task(void const * argument)
     osDelay(1);
   }
   /* USER CODE END Shoot_Task */
-}
-
-/* USER CODE BEGIN Header_kalman_tracking_task */
-/**
-* @brief Function implementing the kalman_tracking thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_kalman_tracking_task */
-__weak void kalman_tracking_task(void const * argument)
-{
-  /* USER CODE BEGIN kalman_tracking_task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END kalman_tracking_task */
 }
 
 /* USER CODE BEGIN Header_manifold_usart_task */

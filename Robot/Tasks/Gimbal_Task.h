@@ -35,13 +35,11 @@ typedef struct
 
 
 extern gimbal_motor_t gimbal_m6020[2];
-extern float auto_aim_yaw_exp,auto_aim_pitch_exp;
-extern float pitch_compensation;
 
 void Gimbal_Task(void const * argument);
 void ctrl_motor(uint16_t id, float _pos, float _vel,float _KP, float _KD, float _torq);
 void enable_DM(uint8_t id, uint8_t ctrl_mode);
 void disable_DM(uint8_t id, uint8_t ctrl_mode);
-void Pitch_Updown(void);
+float Pitch_Updown(void);
 
 #endif

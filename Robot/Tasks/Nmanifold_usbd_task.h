@@ -11,53 +11,53 @@
 #include "arm_math.h"
 
 #include "usbd_cdc_if.h"
-/****************************************³£Á¿¶¨Òå¶Î********************************************/
+/****************************************ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½********************************************/
 #define USBD_RX_BUF_LENGHT		APP_RX_DATA_SIZE
 #define USBD_TX_BUF_LENGHT		APP_TX_DATA_SIZE
 
-//ÃüÁî×ÖID
-#define CMD_ID_AUTOAIM_DATA_RX	 		0x81			//½ÓÊÕ×ÔÃéÊý¾Ý£¨ÉÏ¡úÏÂ£©
-//#define CMD_ID_IMU					0x11			//IMUÏà¹ØÊý¾Ý£¨ÏÂ¡úÉÏ£©
-#define CMD_ID_AUTOAIM_DATA_TX	 		0x14			//·¢ËÍ×ÔÃéÊý¾Ý£¨ÏÂ¡úÉÏ£©
-#define CMD_ID_WORKING_MODE			 	0x15			//²Ù×÷Ä£Ê½£¨ÏÂ¡úÉÏ£©
-#define CMD_ID_DIAL_SWITCH			 	0x17			//²¦Âë¿ª¹Ø£¨ÏÂ¡úÉÏ£©
-#define	CMD_ID_REFEREE_DATA_TX			0x18			//²ÃÅÐÏµÍ³´©Í¸£¨ÏÂ ÉÏ£©
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ID
+#define CMD_ID_AUTOAIM_DATA_RX	 		0x81			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ï¡ï¿½ï¿½Â£ï¿½
+//#define CMD_ID_IMU					0x11			//IMUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define CMD_ID_AUTOAIM_DATA_TX	 		0x14			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define CMD_ID_WORKING_MODE			 	0x15			//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define CMD_ID_DIAL_SWITCH			 	0x17			//ï¿½ï¿½ï¿½ë¿ªï¿½Ø£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define	CMD_ID_REFEREE_DATA_TX			0x18			//ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½Í¸ï¿½ï¿½ï¿½ï¿½ ï¿½Ï£ï¿½
 
-#define CMD_ID_MOVE_CMD_DATA_RX      	0x82      //½ÓÊÕµ×ÅÌ¿ØÖÆÊý¾Ý£¨ÉÏ->ÏÂ£©£¨ÉÚ±ø×¨ÓÃ£©
-#define CMD_ID_ROTATE_DATA_RX       	0x85      //½ÓÊÕÐ¡ÍÓÂÝËÙ¶È£¨ÉÏ->ÏÂ£©£¨ÉÚ±ø×¨ÓÃ£©
-#define CMD_ID_CHASSIA_GIMBAL_ANGLE 	0X16      //·¢ËÍµ×ÅÌÏà¶ÔÔÆÌ¨½Ç¶È£¨ÏÂ->ÉÏ£©£¨ÉÚ±ø×¨ÓÃ£©
-#define CMD_ID_CHASSIS_DATA_TX	 		0x12      //ÉÏ´«µ×ÅÌÂÖËÙ¼ÆÊý¾Ý£¨ÏÂ->ÉÏ£©£¨ÉÚ±ø×¨ÓÃ£©
+#define CMD_ID_MOVE_CMD_DATA_RX      	0x82      //ï¿½ï¿½ï¿½Õµï¿½ï¿½Ì¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define CMD_ID_ROTATE_DATA_RX       	0x85      //ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define CMD_ID_CHASSIA_GIMBAL_ANGLE 	0X16      //ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¨ï¿½Ç¶È£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define CMD_ID_CHASSIS_DATA_TX	 		0x12      //ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¼ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
 
-//Êý¾Ý¶Î³¤¶È£¬ÒÔ×Ö½ÚÎªµ¥Î»
-//#define LENGTH_IMU							40			//IMUÏà¹ØÊý¾Ý£¨ÉÚ±ø£¬ÏÂ¡úÉÏ£©
-#define LENGTH_AUTOAIM_DATA_RX		34			//½ÓÊÕ×ÔÃéÊý¾Ý£¨ÉÏ¡úÏÂ£©
-#define LENGTH_AUTOAIM_DATA_TX		12			//·¢ËÍ×ÔÃéÊý¾Ý£¨ÏÂ¡úÉÏ£© 4+4+4+1
-#define LENGTH_DIAL_SWITCH				4				//²¦Âë¿ª¹Ø£¨ÏÂ¡úÉÏ£©
-#define LENGTH_WORKING_MODE				1				//²Ù×÷Ä£Ê½£¨ÏÂ¡úÉÏ£©
+//ï¿½ï¿½ï¿½Ý¶Î³ï¿½ï¿½È£ï¿½ï¿½ï¿½ï¿½Ö½ï¿½Îªï¿½ï¿½Î»
+//#define LENGTH_IMU							40			//IMUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ú±ï¿½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define LENGTH_AUTOAIM_DATA_RX		34			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ï¡ï¿½ï¿½Â£ï¿½
+#define LENGTH_AUTOAIM_DATA_TX		12			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½ 4+4+4+1
+#define LENGTH_DIAL_SWITCH				4				//ï¿½ï¿½ï¿½ë¿ªï¿½Ø£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
+#define LENGTH_WORKING_MODE				1				//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
 
 
-#define LENGTH_CHASSIS_GIMBAL_ANGLE 4     //·¢ËÍµ×ÅÌÏà¶ÔÔÆÌ¨½Ç¶È£¨ÏÂ->ÉÏ£©£¨ÉÚ±ø×¨ÓÃ£©
-#define LENGTH_CHASSIS_DATA_TX    24      //ÉÏ´«µ×ÅÌÂÖËÙ¼ÆÊý¾Ý£¨ÏÂ->ÉÏ£©£¨ÉÚ±ø×¨ÓÃ£©
-#define LENGTH_REFEREE_DATA_TX		48			//·¢ËÍ¾ö²ßÐèÒªµÄÊý¾Ý £¨ÉÚ±ø×¨ÓÃ£©
-//#define LENGTH_move_cmd_DATA_RX    20      //½ÓÊÕÕû³µ¿ØÖÆÊý¾Ý£¨ÉÏ->ÏÂ£©£¨ÉÚ±ø×¨ÓÃ£© Ã»ÓÃµ½
-#define LENGTH_NUC_DATA_RX		69		//	½ÓÊÕÕû³µ¿ØÖÆÊý¾Ý£¨ÉÏ->ÏÂ£©£¨ÉÚ±ø×¨ÓÃ£© £¨nucÊý¾Ý´ò°ü·¢ÏÂ£¬µ¼º½ºÍ×ÔÃé£©
+#define LENGTH_CHASSIS_GIMBAL_ANGLE 4     //ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¨ï¿½Ç¶È£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define LENGTH_CHASSIS_DATA_TX    24      //ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¼ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define LENGTH_REFEREE_DATA_TX		48			//ï¿½ï¿½ï¿½Í¾ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+//#define LENGTH_move_cmd_DATA_RX    20      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ Ã»ï¿½Ãµï¿½
+#define LENGTH_NUC_DATA_RX		69		//	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ ï¿½ï¿½nucï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£©
 
-//×ÔÃéÄ£Ê½
-#define AUTOAIM_MODE_NORMAL						0x00		//×ÔÃéÄ£Ê½£ºÆÕÍ¨
-#define AUTOAIM_MODE_SMALL_ENERGY			0x01		//×ÔÃéÄ£Ê½£ºÐ¡ÄÜÁ¿»ú¹Ø
-#define AUTOAIM_MODE_BIG_ENERGY				0x02		//×ÔÃéÄ£Ê½£º´óÄÜÁ¿»ú¹Ø
-#define AUTOAIM_MODE_ANTI_TOP					0x03		//×ÔÃéÄ£Ê½£º·´Ð¡ÍÓÂÝ
+//ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+#define AUTOAIM_MODE_NORMAL						0x00		//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½Í¨
+#define AUTOAIM_MODE_SMALL_ENERGY			0x01		//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define AUTOAIM_MODE_BIG_ENERGY				0x02		//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define AUTOAIM_MODE_ANTI_TOP					0x03		//ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½
 
-//×ÔÃé×°¼×
-#define AUTOAIM_ARMOR_AUTO					0x00		//×ÔÃé×°¼×£º×Ô¶¯
-#define AUTOAIM_ARMOR_SMALL					0x04		//×ÔÃé×°¼×£ºÐ¡×°¼×Ä£¿é
-#define AUTOAIM_ARMOR_BIG						0x08		//×ÔÃé×°¼×£º´ó×°¼×Ä£¿é
+//ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½
+#define AUTOAIM_ARMOR_AUTO					0x00		//ï¿½ï¿½ï¿½ï¿½×°ï¿½×£ï¿½ï¿½Ô¶ï¿½
+#define AUTOAIM_ARMOR_SMALL					0x04		//ï¿½ï¿½ï¿½ï¿½×°ï¿½×£ï¿½Ð¡×°ï¿½ï¿½Ä£ï¿½ï¿½
+#define AUTOAIM_ARMOR_BIG						0x08		//ï¿½ï¿½ï¿½ï¿½×°ï¿½×£ï¿½ï¿½ï¿½×°ï¿½ï¿½Ä£ï¿½ï¿½
 
-//²¦Âë¿ª¹Ø
-#define SWITCH_OFF									1				//²»ÆôÓÃ
-#define SWITCH_ON										2				//µÐ·½¶ÓÎéÑÕÉ«£ºÀ¶
-#define ENEMY_INFANTRY_ARMOR_SMALL	0				//µÐ·½²½±ø×°¼×£ºÐ¡×°¼×
-#define ENEMY_INFANTRY_ARMOR_BIG		1				//µÐ·½²½±ø×°¼×£º´ó×°¼×
+//ï¿½ï¿½ï¿½ë¿ªï¿½ï¿½
+#define SWITCH_OFF									1				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+#define SWITCH_ON										2				//ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
+#define ENEMY_INFANTRY_ARMOR_SMALL	0				//ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½×£ï¿½Ð¡×°ï¿½ï¿½
+#define ENEMY_INFANTRY_ARMOR_BIG		1				//ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½×£ï¿½ï¿½ï¿½×°ï¿½ï¿½
 
 
 /*******************************************END**********************************************/
@@ -66,58 +66,58 @@
 
 #pragma pack(push, 1)
 
-/*************************************·¢ËÍ½á¹¹Ìå¶¨Òå¶Î****************************************/
+/*************************************ï¿½ï¿½ï¿½Í½á¹¹ï¿½å¶¨ï¿½ï¿½ï¿½****************************************/
 typedef struct{
 	uint8_t Header;			//Ö¡Í·
-	uint8_t Length;			//Ö¡³¤£¨°üº¬Ö¡Í·ÓëÐ£ÑéÎ»£©
-	uint8_t Cmd_ID;			//ÃüÁî×Ö
-}__attribute__((__packed__)) Protocol_Head_Data;	//Í¨ÐÅÐ­ÒéÊý¾ÝÁ÷Ç°¶ÎÊý¾Ý
+	uint8_t Length;			//Ö¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¡Í·ï¿½ï¿½Ð£ï¿½ï¿½Î»ï¿½ï¿½
+	uint8_t Cmd_ID;			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+}__attribute__((__packed__)) Protocol_Head_Data;	//Í¨ï¿½ï¿½Ð­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 /*typedef struct{
-	float Gyro[3];			//½ÇËÙ¶È£¨X£¬Y£¬Z£©
-	float Accel[3];			//¼ÓËÙ¶È£¨X£¬Y£¬Z£©
-	float Quat[4];			//ËÄÔªÊý£¨X£¬Y£¬Z£¬W£©
-}__attribute__((__packed__)) IMU_Data;//IMUÊý¾Ý*/
+	float Gyro[3];			//ï¿½ï¿½ï¿½Ù¶È£ï¿½Xï¿½ï¿½Yï¿½ï¿½Zï¿½ï¿½
+	float Accel[3];			//ï¿½ï¿½ï¿½Ù¶È£ï¿½Xï¿½ï¿½Yï¿½ï¿½Zï¿½ï¿½
+	float Quat[4];			//ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½Xï¿½ï¿½Yï¿½ï¿½Zï¿½ï¿½Wï¿½ï¿½
+}__attribute__((__packed__)) IMU_Data;//IMUï¿½ï¿½ï¿½ï¿½*/
 
 typedef struct{
-	float Yaw;							//µ±Ç°yaw£¨¡ã£©
-	float Pitch;						//µ±Ç°pitch£¨¡ã£©
-	float Roll;							//µ±Ç°Roll£¨¡ã£©
-//	uint8_t Bullet_Speed;				//×Óµ¯µ¯ËÙ£¨m/s£©
-	//uint8_t Robot_Team_Color;			//»úÆ÷ÈËËùÊô¶ÓÎéµÄÑÕÉ«
+	float Yaw;							//ï¿½ï¿½Ç°yawï¿½ï¿½ï¿½ã£©
+	float Pitch;						//ï¿½ï¿½Ç°pitchï¿½ï¿½ï¿½ã£©
+	float Roll;							//ï¿½ï¿½Ç°Rollï¿½ï¿½ï¿½ã£©
+//	uint8_t Bullet_Speed;				//ï¿½Óµï¿½ï¿½ï¿½ï¿½Ù£ï¿½m/sï¿½ï¿½
+	//uint8_t Robot_Team_Color;			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
 }__attribute__((__packed__)) AutoAim_Data_Tx;
 
 typedef struct{
-	float x;					  //Ç°·½ÏòÊý¾Ý£¨m£©
-	float y;						//×ó·½ÏòÊý¾Ý£¨m£©
-	float z;						//ÄæÊ±Õë·½ÏòÊý¾Ý£¨m£©
-	float vx;           //Ç°·½ÏòËÙ¶È(m/s)
-	float vy;           //×ó·½ÏòËÙ¶È(m/s)
-	float wz;           //ÄæÊ±Õë×ª¶¯ËÙ¶È(rad/s)
-	//uint8_t Robot_Team_Color;		//»úÆ÷ÈËËùÊô¶ÓÎéµÄÑÕÉ«
+	float x;					  //Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½mï¿½ï¿½
+	float y;						//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½mï¿½ï¿½
+	float z;						//ï¿½ï¿½Ê±ï¿½ë·½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½mï¿½ï¿½
+	float vx;           //Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½(m/s)
+	float vy;           //ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½(m/s)
+	float wz;           //ï¿½ï¿½Ê±ï¿½ï¿½×ªï¿½ï¿½ï¿½Ù¶ï¿½(rad/s)
+	//uint8_t Robot_Team_Color;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
 }__attribute__((__packed__)) Chassis_Data_Tx;
 
 typedef struct{
 	float chassis_follow_gimbal_angle;
-}__attribute__((__packed__)) Chassis_Gimbal_Angle_TX;//Í¨ÐÅÐ­ÒéÊý¾ÝÁ÷Ç°¶ÎÊý¾Ý
+}__attribute__((__packed__)) Chassis_Gimbal_Angle_TX;//Í¨ï¿½ï¿½Ð­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-typedef uint8_t Working_Mode;//²Ù×÷Ä£Ê½
-
-typedef struct{
-	uint8_t Switch_off;				//ÊÇ·ñÆôÓÃ²¦Âë¿ª¹Ø 1²»ÆôÓÃ£¬2ÆôÓÃ
-	uint8_t Infantry_Armor[3];	//ÒÀ´ÎÎªµÐ·½3¡¢4¡¢5ºÅ²½±øµÄ×°¼×ÀàÐÍ£¨0:Ð¡×°¼×£»1:´ó×°¼×£©
-}__attribute__((__packed__)) Dial_Switch_Data;//²¦Âë¿ª¹Ø
+typedef uint8_t Working_Mode;//ï¿½ï¿½ï¿½ï¿½Ä£Ê½
 
 typedef struct{
-	uint16_t remain_HP;					//Ê£ÓàÑªÁ¿
-	uint16_t max_HP;						//×ÜÑªÁ¿
+	uint8_t Switch_off;				//ï¿½Ç·ï¿½ï¿½ï¿½ï¿½Ã²ï¿½ï¿½ë¿ªï¿½ï¿½ 1ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½2ï¿½ï¿½ï¿½ï¿½
+	uint8_t Infantry_Armor[3];	//ï¿½ï¿½ï¿½ï¿½Îªï¿½Ð·ï¿½3ï¿½ï¿½4ï¿½ï¿½5ï¿½Å²ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½Í£ï¿½0:Ð¡×°ï¿½×£ï¿½1:ï¿½ï¿½×°ï¿½×£ï¿½
+}__attribute__((__packed__)) Dial_Switch_Data;//ï¿½ï¿½ï¿½ë¿ªï¿½ï¿½
+
+typedef struct{
+	uint16_t remain_HP;					//Ê£ï¿½ï¿½Ñªï¿½ï¿½
+	uint16_t max_HP;						//ï¿½ï¿½Ñªï¿½ï¿½
 														
-	uint8_t	game_progress; 				//±ÈÈü½×¶Î
-	uint16_t stage_remain_time;		//±ÈÈüÊ£ÓàÊ±¼ä
-	uint16_t coin_remaining_num; 	//Ê£Óà¾­¼Ã
-	uint16_t bullet_remaining_num_17mm;	//Ê£Óà·¢µ¯Á¿
+	uint8_t	game_progress; 				//ï¿½ï¿½ï¿½ï¿½ï¿½×¶ï¿½
+	uint16_t stage_remain_time;		//ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½Ê±ï¿½ï¿½
+	uint16_t coin_remaining_num; 	//Ê£ï¿½à¾­ï¿½ï¿½
+	uint16_t bullet_remaining_num_17mm;	//Ê£ï¿½à·¢ï¿½ï¿½ï¿½ï¿½
 
-	uint16_t red_1_HP;					//Ë«·½ÑªÁ¿
+	uint16_t red_1_HP;					//Ë«ï¿½ï¿½Ñªï¿½ï¿½
 	uint16_t red_2_HP;
 	uint16_t red_3_HP;
 	uint16_t red_4_HP;
@@ -133,17 +133,16 @@ typedef struct{
 	uint16_t blue_outpost_HP;
 	uint16_t blue_base_HP;
 		
-	uint32_t rfid_status;					//rfidÉ¨ÃèÄÚÈÝ
+	uint32_t rfid_status;					//rfidÉ¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	uint32_t event_data;
 	uint8_t hurt_reason;
 	
 }__attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
 
-#pragma pack(pop)
 
 
-/*************************************½ÓÊÕ½á¹¹Ìå¶¨Òå¶Î****************************************/
+/*************************************ï¿½ï¿½ï¿½Õ½á¹¹ï¿½å¶¨ï¿½ï¿½ï¿½****************************************/
 typedef struct{
 	float yaw_aim;
 	float pitch_aim;
@@ -156,33 +155,33 @@ typedef struct{
 	float rotate;
 	float yaw_speed;
 	float pitch_speed;	
-}__attribute__((__packed__)) AutoAim_Data_Rx;//×ÔÃéÊý¾Ý
+}__attribute__((__packed__)) AutoAim_Data_Rx;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 typedef struct{
-	fp32 vx;//	int16_t vx;						//Ç°·½ÏòËÙ¶È£¨m/s)
-	fp32 vy;//	int16_t vy;					//×ó·½ÏòËÙ¶È£¨m/s)
-	fp32 yaw_speed;//	int16_t yaw_speed;			//yawÖáËÙ¶È(rad/s)
+	fp32 vx;//	int16_t vx;						//Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½m/s)
+	fp32 vy;//	int16_t vy;					//ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½m/s)
+	fp32 yaw_speed;//	int16_t yaw_speed;			//yawï¿½ï¿½ï¿½Ù¶ï¿½(rad/s)
 	fp32 pitch_speed;
-}__attribute__((__packed__)) Chassis_Data_Rx;//µ×ÅÌÊý¾Ý
+}__attribute__((__packed__)) Chassis_Data_Rx;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 typedef struct{
-	float vx;//	int16_t vx;						//Ç°·½ÏòËÙ¶È£¨m/s)
-	float vy;//	int16_t vy;					//×ó·½ÏòËÙ¶È£¨m/s)
+	float vx;//	int16_t vx;						//Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½m/s)
+	float vy;//	int16_t vy;					//ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½m/s)
 	float rotate;
-	float yaw_speed;//	int16_t yaw_speed;			//yawÖáËÙ¶È(rad/s)
+	float yaw_speed;//	int16_t yaw_speed;			//yawï¿½ï¿½ï¿½Ù¶ï¿½(rad/s)
 	float pitch_speed;
 
-}__attribute__((__packed__)) Move_cmd_Data_Rx;//µ×ÅÌÊý¾Ý ×ÔÃéÊý¾Ý
+}__attribute__((__packed__)) Move_cmd_Data_Rx;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 typedef struct{
-	int16_t rotate;						//ÄæÊ±ÕëËÙ¶È(rad/s)
-}__attribute__((__packed__)) Rotate_Data_Rx;//Ð¡ÍÓÂÝÊý¾Ý
+	int16_t rotate;						//ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ù¶ï¿½(rad/s)
+}__attribute__((__packed__)) Rotate_Data_Rx;//Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 /*******************************************END**********************************************/
 
+#pragma pack(pop)
 
 
-
-//¶ÔÍâ½Ó¿Ú
+//ï¿½ï¿½ï¿½ï¿½Ó¿ï¿½
 extern AutoAim_Data_Rx AutoAim_Data_Receive;
 extern Chassis_Data_Rx Chassis_Data_Receive;
 extern Chassis_Data_Tx Chassis_Data_Tramsit;
@@ -194,7 +193,7 @@ extern uint16_t LENTH_REFEREE_BUF;
 extern Dial_Switch_Data Dial_Switch;
 
 
-//º¯ÊýÉùÃ÷
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void manifold_USBD_task(void);
 uint8_t USBD_IRQHandler(uint8_t* Buf, uint16_t Len);
 uint8_t NUC_Data_Unpack(void);
@@ -203,7 +202,7 @@ uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len);
 
 
 
-//8Î»°æ±¾CRC±í
+//8Î»ï¿½æ±¾CRCï¿½ï¿½
 static const uint8_t CRC08_Table[256] = {
     0x00, 0x5e, 0xbc, 0xe2, 0x61, 0x3f, 0xdd, 0x83, 0xc2, 0x9c, 0x7e, 0x20, 0xa3, 0xfd, 0x1f, 0x41,
     0x9d, 0xc3, 0x21, 0x7f, 0xfc, 0xa2, 0x40, 0x1e, 0x5f, 0x01, 0xe3, 0xbd, 0x3e, 0x60, 0x82, 0xdc,

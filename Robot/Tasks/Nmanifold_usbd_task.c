@@ -76,7 +76,7 @@ static fp32 fric_real_speed=30.0f;
 //extern ext_game_robot_state_t Game_Robot_HP;
 //extern ext_game_robot_HP_t RFID_Status;
 
-void manifold_usbd_task(void)
+void manifold_usart_task(void)
 {
 	vTaskDelay(200);
 	memset(NUC_USBD_RxBuf, 0x00, USBD_RX_BUF_LENGHT);										
