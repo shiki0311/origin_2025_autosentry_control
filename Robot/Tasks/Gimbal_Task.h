@@ -33,6 +33,11 @@ typedef struct
 	pid_type_def auto_aim_pid;
 } gimbal_motor_t;
 
+typedef struct {
+	float min_angle;
+	float max_angle;
+	float step;  // pitch步进角度
+} PitchSwingParams; //pitch上下摇结构体
 
 extern gimbal_motor_t gimbal_m6020[2];
 

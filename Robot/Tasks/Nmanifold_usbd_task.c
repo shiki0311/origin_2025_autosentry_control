@@ -1,12 +1,12 @@
 /**
   *****************************************************************************
   * @file       Nmanifold_usbd_task.c/h
-  * @brief      MANIFOLD data solve. MANIFOLDÊý¾Ý´¦Àí
+  * @brief      MANIFOLD data solve. MANIFOLDï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½
   * @note       
   * @history
   *  Version    Date            Author          Modification
-  *  V2.0.0			Mar-3-2023			Ê¥ÁéÁÁÐÀ					1.Done
-  *  V2.1.0			May-16-2023			Ê¥ÁéÁÁÐÀ					1.Add data transmission for dial switch
+  *  V2.0.0			Mar-3-2023			Ê¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½					1.Done
+  *  V2.1.0			May-16-2023			Ê¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½					1.Add data transmission for dial switch
   *  V1.0usbd  		October-28-2024		captainwu				1.transform to usbd
   @verbatim
   ==============================================================================
@@ -16,15 +16,15 @@
   *****************************************************************************
 */
 /*****************************************************************************************
-			ÐÂC°å¡ª¡ªNUC´®¿ÚÍ¨ÐÅÐ­Òé£¨×ÔÃé°æ±¾£©C°åµ×²ãÊ¹ÓÃ²½Öè
-¢Ù
-¢Ú
-¢Û
-¢Ü½«¸ÃÔ´ÎÄ¼þµ¼Èëµ½¹¤³ÌÖÐ£¬Í¬Ê±È·±£Í·ÎÄ¼þÔÚ¹¤³ÌµÄ°üº¬Ä¿Â¼ÖÐ¡£
-¢ÝÔÚstm32f4xx_it.cµÄUSART1_IRQHandler_1º¯ÊýÖÐµ÷ÓÃUSART1_IRQHandler_1º¯Êý¡£
-¢ÞÊ¹ÓÃxTaskCreate»òosThreadDef+osThreadCreate´´½¨manifold_usart_taskµÄFreeRTOSÈÎÎñ¡£
-¢ß¼ì²é´®¿ÚÊÕ·¢Êý¾ÝÁ÷ÖÐµÄÖ¡Í·¡¢Ö¡³¤¡¢ÃüÁî×ÖºÍCRCÐ£ÑéÎ»ÊÇ·ñÕý³£¡£
-¢àÔÚÒ»ÇÐµ×²ãÅäÖÃ¾ùÕý³£µÄÇé¿öÏÂ¼´¿ÉÔÚAutoAim_Data_Receive½á¹¹ÌåÄÚ»ñÈ¡µ½×ÔÃéÏà¹ØÊý¾Ý¡£
+			ï¿½ï¿½Cï¿½å¡ªï¿½ï¿½NUCï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½Ð­ï¿½é£¨ï¿½ï¿½ï¿½ï¿½æ±¾ï¿½ï¿½Cï¿½ï¿½×²ï¿½Ê¹ï¿½Ã²ï¿½ï¿½ï¿?
+ï¿½ï¿½
+ï¿½ï¿½
+ï¿½ï¿½
+ï¿½Ü½ï¿½ï¿½ï¿½Ô´ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ëµ½ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½Í¬Ê±È·ï¿½ï¿½Í·ï¿½Ä¼ï¿½ï¿½Ú¹ï¿½ï¿½ÌµÄ°ï¿½ï¿½ï¿½Ä¿Â¼ï¿½Ð¡ï¿½
+ï¿½ï¿½ï¿½ï¿½stm32f4xx_it.cï¿½ï¿½USART1_IRQHandler_1ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½USART1_IRQHandler_1ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½Ê¹ï¿½ï¿½xTaskCreateï¿½ï¿½osThreadDef+osThreadCreateï¿½ï¿½ï¿½ï¿½manifold_usart_taskï¿½ï¿½FreeRTOSï¿½ï¿½ï¿½ï¿½
+ï¿½ß¼ï¿½é´?ï¿½ï¿½ï¿½Õ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½Ö¡Í·ï¿½ï¿½Ö¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öºï¿½CRCÐ£ï¿½ï¿½Î»ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ðµ×²ï¿½ï¿½ï¿½ï¿½Ã¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½AutoAim_Data_Receiveï¿½á¹¹ï¿½ï¿½ï¿½Ú»ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¡ï¿?
 *****************************************************************************************/
 #include "Nmanifold_usbd_task.h"
 #include "arm_math.h"
@@ -63,18 +63,13 @@ Chassis_Gimbal_Angle_TX Chassis_Gimbal_Angle_Tramsit;
 
 Dial_Switch_Data Dial_Switch;
 
-uint8_t Autoaim_Mode = AUTOAIM_MODE_ANTI_TOP; // ·´Ð¡ÍÓÂÝÄ£Ê½
-uint8_t Autoaim_Armor = AUTOAIM_ARMOR_AUTO;   // ×Ô¶¯Ñ¡Ôñ´óÐ¡×°¼×
+uint8_t Autoaim_Mode = AUTOAIM_MODE_ANTI_TOP; // ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+uint8_t Autoaim_Armor = AUTOAIM_ARMOR_AUTO;   // ï¿½Ô¶ï¿½Ñ¡ï¿½ï¿½ï¿½Ð¡×°ï¿½ï¿?
 uint8_t autoaim_mode=2,flag_gimbal_ecd_cnt=0;
 uint8_t autoaim_armor=0x10;
 uint8_t flag_AUTOAIM_DATA=0,cnt_AUTOAIM_DATA=0;
 static fp32 fric_real_speed=30.0f;
 
-//extern ext_game_robot_state_t Game_Robot_State;
-//extern ext_game_robot_state_t Game_State;
-//extern ext_game_robot_state_t Bullet_Remaining;
-//extern ext_game_robot_state_t Game_Robot_HP;
-//extern ext_game_robot_HP_t RFID_Status;
 
 void manifold_usart_task(void)
 {
@@ -88,42 +83,19 @@ void manifold_usart_task(void)
 		if(++t > 799) 
 			t = 0;
 		
-		//ÏòNUCÉÏÎ»»ú·¢ËÍ×ÔÉíÔÆÌ¨×ËÌ¬ÐÅÏ¢ÓëÉä»÷²ÎÊý£¬ÒÔ»ñÈ¡×ÔÃéËùÐèÐÅÏ¢
+		//ï¿½ï¿½NUCï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¨ï¿½ï¿½Ì¬ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô»ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï?
 		if(t % 7 == 0) 
 		{
 			NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX);	
 			vTaskDelay(1);
 		}
 		
-		// ·¢ËÍ²ÃÅÐÏµÍ³Êý¾Ý
+		// ï¿½ï¿½ï¿½Í²ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½
 		if(t % 50 == 0)
 		{
 			NUC_USBD_Tx(CMD_ID_REFEREE_DATA_TX);	
 			vTaskDelay(1);
 		}
-		
-//		if(flag_AUTOAIM_DATA==1) // ÊÇ·ñÊÕµ½×ÔÃéÊý¾Ý
-//		{
-//			NUC_Usart_Tx(CMD_ID_CHASSIA_GIMBAL_ANGLE);
-//			flag_AUTOAIM_DATA=0;
-//			vTaskDelay(1);
-//		}
-//		//ÏòNUCÉÏÎ»»ú·¢ËÍ×ÔÃéÄ£Ê½ÐÅÏ¢£¬Ö¸ÁîNUCÖ´ÐÐÏàÓ¦µÄ×ÔÃéËã·¨
-//		if(t % 19 == 0) 
-//		{
-//			NUC_Usart_Tx(CMD_ID_WORKING_MODE);
-//			vTaskDelay(1);
-//			isDelay = 1;
-//		}	
-//		
-//		//ÏòNUCÉÏÎ»»ú·¢ËÍ²¦Âë¿ª¹ØÊý¾ÝÐÅÏ¢£¬ÈÃNUCÈ·¶¨µÐ·½¶ÓÎéµÄÑÕÉ«ÌØÕ÷ºÍµÐ·½¸÷¸ö²½±øµÄ×°¼×°å´óÐ¡
-//		if(t % 41 == 0)
-//			{
-//			NUC_Usart_Tx(CMD_ID_DIAL_SWITCH);
-//			vTaskDelay(1);
-//				isDelay = 1;
-
-//			}
 	};
 }
 
@@ -131,13 +103,13 @@ void manifold_usart_task(void)
 uint8_t USBD_IRQHandler(uint8_t* Buf, uint16_t Len)
 {		
 		memcpy(NUC_USBD_RxBuf+RX_Lenth_Total,Buf, Len);
-		if(NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128 )//ÎÒ²ÂÊÇ±êÊ¶·û£¬±êÊ¶·û²»ÊÇ0xAA¾Í·µ»Ø1
+		if(NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128 )//ï¿½Ò²ï¿½ï¿½Ç±ï¿½Ê¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½0xAAï¿½Í·ï¿½ï¿½ï¿½1
 			return 1;		
 		RX_Lenth_Total=Len+RX_Lenth_Total;
 	
-		if(NUC_USBD_RxBuf[1] == RX_Lenth_Total) //³¤¶ÈÐ£Ñé£¬±ßÐ£Ñé±ß½ÓÊÕ
+		if(NUC_USBD_RxBuf[1] == RX_Lenth_Total) //ï¿½ï¿½ï¿½ï¿½Ð£ï¿½é£¬ï¿½ï¿½Ð£ï¿½ï¿½ß½ï¿½ï¿½ï¿?
 			{
-				NUC_Data_Unpack();//Êý¾Ý½â°ü
+				NUC_Data_Unpack();//ï¿½ï¿½ï¿½Ý½ï¿½ï¿?
 //				CDC_Transmit_FS(NUC_USBD_RxBuf, RX_Lenth_Total);
 				RX_Lenth_Total=0;
 			}
@@ -154,58 +126,18 @@ uint8_t USBD_IRQHandler(uint8_t* Buf, uint16_t Len)
 uint8_t NUC_Data_Unpack(void)
 {	
 	switch(NUC_USBD_RxBuf[2])
-	{
-//		case CMD_ID_AUTOAIM_DATA_RX:
-//			if(NUC_USBD_RxBuf[1] != LENGTH_AUTOAIM_DATA_RX + 4 || CRC_Calculation(NUC_USBD_RxBuf, LENGTH_AUTOAIM_DATA_RX + 3) != NUC_USBD_RxBuf[3 + LENGTH_AUTOAIM_DATA_RX])
-//				return 1;
-//			memcpy(&AutoAim_Data_Receive, NUC_USBD_RxBuf + 3, sizeof(AutoAim_Data_Rx));
-//		break;
-			
+	{		
 		case CMD_ID_AUTOAIM_DATA_RX:
 		{
-//			if(NUC_USBD_RxBuf[1] != 0x49 )
-//				return 1;
-//			if(CRC_Calculation(NUC_USBD_RxBuf, LENGTH_NUC_DATA_RX + 3) != NUC_USBD_RxBuf[3 + LENGTH_NUC_DATA_RX])
-//				return 1;
 			memcpy(&AutoAim_Data_Receive, NUC_USBD_RxBuf + 3, sizeof(AutoAim_Data_Rx));
 			Chassis_Data_Receive.vx = AutoAim_Data_Receive.vx;
 			Chassis_Data_Receive.vy = AutoAim_Data_Receive.vy;
 			Chassis_Data_Receive.yaw_speed = AutoAim_Data_Receive.yaw_speed;
 			Chassis_Data_Receive.pitch_speed = AutoAim_Data_Receive.pitch_speed;
 			Rotate_Data_Receive.rotate = AutoAim_Data_Receive.rotate;
-//			AutoAim_Data_Receive.Pitch=-AutoAim_Data_Receive.Pitch;
 			break;
-		}		/*ÕâÒ»¶ÎÓÐµãÊº£¬µ¼º½ºÍ×ÔÃéÊý¾ÝÒ»Æð·¢ÏÂÀ´Ò»¸ö°ü68×Ö½Ú	*/
-					
-//		case CMD_ID_MOVE_CMD_DATA_RX:
-//		{
-//			if(NUC_USART_RxBuf[1] != LENGTH_move_cmd_DATA_RX + 4 )//|| CRC_Calculation(NUC_USART_RxBuf, LENGTH_AUTOAIM_DATA_RX + 3) != NUC_USART_RxBuf[3 + LENGTH_AUTOAIM_DATA_RX])
-//				return 1;
-//			memcpy(&Move_cmd_Receive, NUC_USART_RxBuf + 3, sizeof(Move_cmd_Data_Rx));
-//			Chassis_Data_Receive.vx = Move_cmd_Receive.vx;
-//			Chassis_Data_Receive.vy = Move_cmd_Receive.vy;
-//			Chassis_Data_Receive.yaw_speed = Move_cmd_Receive.yaw_speed;
-//			Chassis_Data_Receive.pitch_speed = Move_cmd_Receive.pitch_speed;
-//			Rotate_Data_Receive.rotate = Move_cmd_Receive.rotate;
-//			break;
-//		}
-//		case CMD_ID_CHASSIS_DATA_RX:
-//		{
-//	//		if(NUC_USART_RxBuf[1]!=LENGTH_CHASSIS_DATA_RX + 4 )//||  CRC_Calculation(NUC_USART_RxBuf, LENGTH_CHASSIS_DATA_RX + 3) != NUC_USART_RxBuf[3 + LENGTH_CHASSIS_DATA_RX])
-//	//			return 1;	
-//			memcpy(&Chassis_Data_Receive, NUC_USART_RxBuf + 3, sizeof(Chassis_Data_Rx));
-//			break;
-//		}
-//		
-//		case CMD_ID_ROTATE_DATA_RX:
-//		{
-//			if(NUC_USART_RxBuf[1]!= LENGTH_ROTATE_DATA_RX + 4 ||  CRC_Calculation(NUC_USART_RxBuf, LENGTH_ROTATE_DATA_RX + 3) != NUC_USART_RxBuf[3 + LENGTH_ROTATE_DATA_RX])
-//				return 1;
-//			memcpy(&Rotate_Data_Receive, NUC_USART_RxBuf + 3, sizeof(Rotate_Data_Rx));
-//			break;	
-//		}
-			
-		
+		}		/*ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ðµï¿½Êºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½68ï¿½Ö½ï¿½	*/
+							
 		default:
 			return 1;
 	}
@@ -218,7 +150,7 @@ void NUC_USBD_Tx(uint8_t cmdid){
 	Protocol_Head.Header = 0xAA;
 	Protocol_Head.Cmd_ID = cmdid;
 	switch(cmdid){
-		case CMD_ID_AUTOAIM_DATA_TX:   // ·¢ËÍ±¾Éí×ËÌ¬Êý¾Ý£¬¸ø×ÔÃéÓÃ
+		case CMD_ID_AUTOAIM_DATA_TX:   // ï¿½ï¿½ï¿½Í±ï¿½ï¿½ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			Protocol_Head.Length = LENGTH_AUTOAIM_DATA_TX + 4;
 			memcpy(NUC_USBD_TxBuf, (uint8_t *)(&Protocol_Head), 3);
 			AutoAim_Data_Tramsit.Pitch = INS_angle_deg[1];
@@ -228,11 +160,9 @@ void NUC_USBD_Tx(uint8_t cmdid){
 			memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&AutoAim_Data_Tramsit), LENGTH_AUTOAIM_DATA_TX);
 			
 			NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_AUTOAIM_DATA_TX + 3);
-		
-
 			flag_AUTOAIM_DATA=1;
 			cnt_AUTOAIM_DATA++;
-//			HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_AUTOAIM_DATA_TX + 6-2+1); // »ù´¡Êý¾Ý¼ÓÉÏ 3Î»Protocol_Head ºÍ 1Î»CRCºÍÒ»Î»½áÊø·û
+//			HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_AUTOAIM_DATA_TX + 6-2+1); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¼ï¿½ï¿½ï¿½ 3Î»Protocol_Head ï¿½ï¿½ 1Î»CRCï¿½ï¿½Ò»Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			CDC_Transmit_FS(NUC_USBD_TxBuf, LENGTH_AUTOAIM_DATA_TX  + 6-2);
 			break;
 
@@ -243,10 +173,7 @@ void NUC_USBD_Tx(uint8_t cmdid){
 			WMode = Autoaim_Armor | Autoaim_Mode;
 			memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&WMode), LENGTH_WORKING_MODE);
 			
-			NUC_USBD_TxBuf[LENGTH_WORKING_MODE + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_WORKING_MODE + 3);
-		
-
-			
+			NUC_USBD_TxBuf[LENGTH_WORKING_MODE + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_WORKING_MODE + 3);		
 //			HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_WORKING_MODE + 6-2);
 			CDC_Transmit_FS(NUC_USBD_TxBuf, LENGTH_WORKING_MODE + 6-2);	
 		break;
@@ -314,10 +241,11 @@ void NUC_USBD_Tx(uint8_t cmdid){
 				Referee_Data_Tramsit.rfid_status = RFID_Status.rfid_status;
 				Referee_Data_Tramsit.event_data=Event_Data.event_type;
 				Referee_Data_Tramsit.hurt_reason=Robot_Hurt.hurt_type;
+				Referee_Data_Tramsit.sentry_bullet_already_get=(uint16_t)(Sentry_Info.sentry_info & 0x7FF);
 				memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
 				
 				NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 3); 
-//				HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_REFEREE_DATA_TX + 6-2); // »ù´¡Êý¾Ý¼ÓÉÏ 3Î»Protocol_Head ºÍ 1Î»CRC
+//				HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_REFEREE_DATA_TX + 6-2); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¼ï¿½ï¿½ï¿½ 3Î»Protocol_Head ï¿½ï¿½ 1Î»CRC
 				CDC_Transmit_FS(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 4);
 				break;
 		default:

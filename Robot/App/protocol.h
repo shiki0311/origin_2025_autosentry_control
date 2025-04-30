@@ -47,6 +47,7 @@ typedef enum
 	BULLET_REMAINING_CMD_ID           = 0x0208,  //子弹剩余发射数
 	ROBOT_RFID_STATE_CMD_ID           = 0x0209,  //机器人RFID状态
 	ROBOT_POSITION_TO_SENTRY					= 0x020B,	 //地面机器人位置
+	SENTRY_INFO_CMD_ID                = 0x020D,  //哨兵机器人信息
 	STUDENT_INTERACTIVE_DATA_CMD_ID   = 0x0301,  //机器人间通信
   ROBOT_COMMAND_CMD_ID              = 0x0303,  //小地图下发信息标识
   CLIENT_MAP_COMMAND_CMD_ID         = 0x0305,  //小地图接收雷达数据

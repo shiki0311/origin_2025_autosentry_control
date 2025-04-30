@@ -38,9 +38,10 @@ typedef struct
 	pid_type_def chassis_follow_gimbal_pid;
 }chassis_control_t;
 
-extern double init_chassis_power;
+
 extern chassis_motor_t chassis_m3508[4];
 extern chassis_control_t chassis_control;
+extern float Real_Power;
 void Chassis_Task(void const * argument);
 void chassis_feedback_update(void);
 void CAN_Cap_CMD(float data1,float data2,float data3,float data4);

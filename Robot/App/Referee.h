@@ -295,6 +295,13 @@ typedef __packed struct  //0x020B 地面机器人位置
   float reserved_2;
 } ext_ground_robot_position_t;
 
+typedef __packed struct //0x020D 哨兵相关信息
+{
+	uint32_t sentry_info;
+	uint16_t sentry_info_2;
+} ext_sentry_info_t;
+
+
 /* 0x030X --------------------------------------------------------------------*/
 typedef __packed struct  //0x0301 机器人间通信 头结构体
 {
@@ -442,6 +449,7 @@ extern ext_shoot_data_t       Shoot_Data;
 extern ext_bullet_remaining_t Bullet_Remaining;
 extern ext_rfid_status_t      RFID_Status;
 extern ext_ground_robot_position_t Ground_Robot_Position;
+extern ext_sentry_info_t           Sentry_Info;
 
 /* 0x030X */
 extern ext_student_interactive_header_data_t Student_Interactive_Header_Data;

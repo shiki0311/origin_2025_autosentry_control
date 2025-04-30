@@ -16,30 +16,30 @@
 #define ROBOT_ID_MYSELF Robot_ID_Red_Hero
 
 /* Private variables ---------------------------------------------------------*/
-/* ²ÃÅÐÏµÍ³´®¿ÚË«»º³åÇø */
+/* ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½Ë«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 uint8_t Referee_Buffer[2][REFEREE_USART_RX_BUF_LENGHT];
 
-/* ²ÃÅÐÏµÍ³½ÓÊÕÊý¾Ý¶ÓÁÐ */
+/* ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¶ï¿½ï¿½ï¿½ */
 fifo_s_t Referee_FIFO;
 uint8_t Referee_FIFO_Buffer[REFEREE_FIFO_BUF_LENGTH];
 
-/* protocol½âÎö°ü½á¹¹Ìå */
+/* protocolï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½ */
 unpack_data_t Referee_Unpack_OBJ;
 
-/* ¶¯Ì¬UIÊý¾Ý±äÁ¿ */
-uint8_t UI_AutoAim_Flag = 0;    //ÊÇ·ñ¿ªÆô×ÔÃé±êÖ¾Î»
-float   UI_Kalman_Speed = 0;    //¿¨¶ûÂüÔ¤²âËÙ¶È
-float   UI_Gimbal_Pitch = 0.0f; //ÔÆÌ¨PitchÖá½Ç¶È
-float   UI_Gimbal_Yaw   = 0.0f; //ÔÆÌ¨YawÖá½Ç¶È
-uint8_t UI_Capacitance  = 10;   //µçÈÝÊ£ÓàÈÝÁ¿
-uint8_t UI_fric_is_on   = 0;    //Ä¦²ÁÂÖÊÇ·ñ¿ªÆô
+/* ï¿½ï¿½Ì¬UIï¿½ï¿½ï¿½Ý±ï¿½ï¿½ï¿½ */
+uint8_t UI_AutoAim_Flag = 0;    //ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾Î»
+float   UI_Kalman_Speed = 0;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½ï¿½Ù¶ï¿½
+float   UI_Gimbal_Pitch = 0.0f; //ï¿½ï¿½Ì¨Pitchï¿½ï¿½Ç¶ï¿½
+float   UI_Gimbal_Yaw   = 0.0f; //ï¿½ï¿½Ì¨Yawï¿½ï¿½Ç¶ï¿½
+uint8_t UI_Capacitance  = 10;   //ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+uint8_t UI_fric_is_on   = 0;    //Ä¦ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½
 
 
 uint8_t UI_Capacitance_Color;
 
 uint16_t LENTH_REFEREE_BUF=0;
 
-float UI_Capacitance_Value=100.00f;	//³¬¼¶µçÈÝÊ£ÓàÈÝÁ¿°Ù·Ö±È
+float UI_Capacitance_Value=100.00f;	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù·Ö±ï¿½
 
 _Bool FrictionChange		=0;
 _Bool FrictionFlag			=0;
@@ -51,7 +51,7 @@ _Bool SpirallingFlag		=1;
 void referee_usart_task(void const * argument)
 {
 
-	/* ²ÃÅÐÏµÍ³³õÊ¼»¯ */
+	/* ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½Ê¼ï¿½ï¿½ */
 	Referee_StructInit();
 	Referee_UARTInit(Referee_Buffer[0], Referee_Buffer[1], REFEREE_USART_RX_BUF_LENGHT);
 	Referee_FIFOInit(&Referee_FIFO, Referee_FIFO_Buffer, REFEREE_FIFO_BUF_LENGTH);
@@ -59,48 +59,11 @@ void referee_usart_task(void const * argument)
 	
 	while(1)
 	{
-		/* ½âÎö²ÃÅÐÏµÍ³Êý¾Ý */
+		/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ */
 		vTaskDelay(10);
 		Referee_UnpackFifoData(&Referee_Unpack_OBJ, &Referee_FIFO);
-		
-		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit,init_chassis_power,Power_Heat_Data.buffer_energy,0);
-		UI_Gimbal_Pitch=DM_pitch_motor_data.INS_angle; //´Ógimbal_m6020[1]¸Ä³ÉdamiaoµÄ
-		UI_fric_is_on = fric_state;
-		UI_Capacitance=cap_data.cap_per * 100;
-		
-	
+//		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit, Real_Power, Power_Heat_Data.buffer_energy, 0);
 	}
-}
-
-void USART6_IRQHandler_0(void)
-{
-    static volatile uint8_t res;
-    if(USART6->SR & UART_FLAG_IDLE)
-    {
-        __HAL_UART_CLEAR_PEFLAG(&huart6);
-
-        static uint16_t this_time_rx_len = 0;
-
-        if ((huart6.hdmarx->Instance->CR & DMA_SxCR_CT) == RESET)
-        {
-            __HAL_DMA_DISABLE(huart6.hdmarx);
-            this_time_rx_len = REFEREE_USART_RX_BUF_LENGHT - __HAL_DMA_GET_COUNTER(huart6.hdmarx);
-            __HAL_DMA_SET_COUNTER(huart6.hdmarx, REFEREE_USART_RX_BUF_LENGHT);
-            huart6.hdmarx->Instance->CR |= DMA_SxCR_CT;
-            __HAL_DMA_ENABLE(huart6.hdmarx);
-            fifo_s_puts(&Referee_FIFO, (char*)Referee_Buffer[0], this_time_rx_len);
-        }
-        else
-        {
-            __HAL_DMA_DISABLE(huart6.hdmarx);
-            this_time_rx_len = REFEREE_USART_RX_BUF_LENGHT - __HAL_DMA_GET_COUNTER(huart6.hdmarx);
-						LENTH_REFEREE_BUF=this_time_rx_len;
-            __HAL_DMA_SET_COUNTER(huart6.hdmarx, REFEREE_USART_RX_BUF_LENGHT);
-            huart6.hdmarx->Instance->CR &= ~(DMA_SxCR_CT);
-            __HAL_DMA_ENABLE(huart6.hdmarx);
-            fifo_s_puts(&Referee_FIFO, (char*)Referee_Buffer[1], this_time_rx_len);
-        }
-    }
 }
 
 void Referee_IRQHandler(void)
@@ -113,12 +76,12 @@ void Referee_IRQHandler(void)
 	{
 		static uint16_t Size = 0;
 		
-		/* Çå¿Õ±êÖ¾Î» */
+		/* ï¿½ï¿½Õ±ï¿½Ö¾Î» */
 		__HAL_UART_CLEAR_IDLEFLAG(&Referee_UART);
 		
 		if ((Referee_UART.hdmarx->Instance->CR & DMA_SxCR_CT) == RESET)
 		{
-			/* ÖØÖÃDMA²¢ÇÐ»»»º³åÇø */
+			/* ï¿½ï¿½ï¿½ï¿½DMAï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 			__HAL_DMA_DISABLE(Referee_UART.hdmarx);
 			Size = 512 - Referee_UART.hdmarx->Instance->NDTR;
 //			Size =  Referee_UART.hdmarx->Instance->NDTR;
@@ -127,12 +90,12 @@ void Referee_IRQHandler(void)
 			Referee_UART.hdmarx->Instance->CR |= DMA_SxCR_CT;
 			__HAL_DMA_ENABLE(Referee_UART.hdmarx);
 			
-			/* ½«Êý¾ÝÌí¼Óµ½¶ÓÁÐ */
+			/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½ */
 			fifo_s_puts(&Referee_FIFO, (char *)Referee_Buffer[0], Size);
 		}
 		else
 		{
-			/* ÖØÖÃDMA²¢ÇÐ»»»º³åÇø */
+			/* ï¿½ï¿½ï¿½ï¿½DMAï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 			__HAL_DMA_DISABLE(Referee_UART.hdmarx);
 //			Size = Referee_UART.hdmarx->Instance->NDTR;
 				Size = 512 - Referee_UART.hdmarx->Instance->NDTR;
@@ -141,7 +104,7 @@ void Referee_IRQHandler(void)
 			Referee_UART.hdmarx->Instance->CR &= ~(DMA_SxCR_CT);
 			__HAL_DMA_ENABLE(Referee_UART.hdmarx);
 			
-			/* ½«Êý¾ÝÌí¼Óµ½¶ÓÁÐ */
+			/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½ */
 			fifo_s_puts(&Referee_FIFO, (char *)Referee_Buffer[1], Size);
 		}
 		return;

@@ -15,7 +15,7 @@ typedef struct
 
 
 extern cap_measure_t cap_data;
-
+extern uint8_t cap_recieve_flag;
 void update_cap(uint8_t * data);
 
 #endif

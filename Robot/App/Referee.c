@@ -36,15 +36,16 @@ ext_referee_warning_t           Referee_Warning;
 ext_dart_remaining_time_t       Dart_Remaining_Time;
 
 /* 0x020X */
-ext_game_robot_state_t Game_Robot_State;
-ext_power_heat_data_t  Power_Heat_Data;
-ext_game_robot_pos_t   Game_Robot_Pos;
-ext_buff_musk_t        Buff_Musk;
-ext_robot_hurt_t       Robot_Hurt;
-ext_shoot_data_t       Shoot_Data;
-ext_bullet_remaining_t Bullet_Remaining;
-ext_rfid_status_t      RFID_Status;
+ext_game_robot_state_t      Game_Robot_State;
+ext_power_heat_data_t       Power_Heat_Data;
+ext_game_robot_pos_t        Game_Robot_Pos;
+ext_buff_musk_t             Buff_Musk;
+ext_robot_hurt_t            Robot_Hurt;
+ext_shoot_data_t            Shoot_Data;
+ext_bullet_remaining_t      Bullet_Remaining;
+ext_rfid_status_t           RFID_Status;
 ext_ground_robot_position_t Ground_Robot_Position;
+ext_sentry_info_t           Sentry_Info;
 
 /* 0x030X */
 ext_student_interactive_header_data_t Student_Interactive_Header_Data;
@@ -90,6 +91,7 @@ void Referee_StructInit(void)
 	memset(&Bullet_Remaining,                0, sizeof(Bullet_Remaining));
 	memset(&RFID_Status,                     0, sizeof(RFID_Status));
 	memset(&Ground_Robot_Position,           0, sizeof(Ground_Robot_Position));
+	memset(&Sentry_Info,                     0, sizeof(Sentry_Info));
 	/* 0x030X */
 	memset(&Student_Interactive_Header_Data, 0, sizeof(Student_Interactive_Header_Data));
 	memset(&Robot_Interactive_Data,          0, sizeof(Robot_Interactive_Data));
@@ -266,6 +268,7 @@ void Referee_SolveFifoData(uint8_t *frame)
 		case SHOOT_DATA_CMD_ID:                memcpy(&Shoot_Data,                frame + index, sizeof(ext_shoot_data_t));                break;
 		case BULLET_REMAINING_CMD_ID:          memcpy(&Bullet_Remaining,          frame + index, sizeof(ext_bullet_remaining_t));          break;
 		case ROBOT_RFID_STATE_CMD_ID:          memcpy(&RFID_Status,               frame + index, sizeof(ext_rfid_status_t));               break;
+		case SENTRY_INFO_CMD_ID:               memcpy(&Sentry_Info,               frame + index, sizeof(ext_sentry_info_t));               break;
 		
 		case STUDENT_INTERACTIVE_DATA_CMD_ID:  memcpy(&Robot_Interactive_Data,    frame + index, sizeof(robot_interactive_data_t));        break;
 		case ROBOT_COMMAND_CMD_ID:             memcpy(&Robot_Command,             frame + index, sizeof(ext_robot_command_t));             break;

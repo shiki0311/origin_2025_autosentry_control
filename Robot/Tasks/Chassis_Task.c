@@ -24,7 +24,6 @@
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO 2402
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO 8544
 #define NO_JUDGE_TOTAL_CURRENT_LIMIT 64000.0f
-// #define BUFFER_TOTAL_CURRENT_LIMIT      16000.0f
 #define BUFFER_TOTAL_CURRENT_LIMIT 30000.0f
 #define POWER_TOTAL_CURRENT_LIMIT 30000.0f
 #define WARNING_POWER_BUFF 60.0f
@@ -47,40 +46,51 @@
 #define CHASSIS_POWER_PID_MAX_OUT 1.0f
 #define CHASSIS_POWER_PID_MAX_IOUT 1000.0f
 
-// ??????? rp/m->m/s
+//  rp/m->m/s
 #define M3508_MOTOR_RPM_TO_VECTOR 0.03547934768011173503001388518321f
-// ??????? rp->m
+//  rp->m
 #define M3508_MOTOR_ECD_TO_DISTANCE 0.00000415809748903494517209f
 
-/********************?????????????**********************/
+/********************??????????**********************/
 const fp32 toque_coefficient = 1.99688994e-6f; //
 const fp32 k1 = 1.23e-07;					   // k1
 const fp32 k2 = 1.453e-07;					   // k2
 const fp32 constant = 4.081f;
 /*****************************************************/
 
-/*************************?§Ö?????§Ý?§³????????2025???????????????—¥****************************/
+/*************************Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½Ð»ï¿½ï¿½ï¿½2025ï¿½Ø¹ï¿½ï¿½æ£©****************************/
 typedef enum
 {
-	HEALTH_NORMAL, // ??????
-	HEALTH_HURT	   // ?????????
+	HEALTH_NORMAL,
+	HEALTH_HURT
 } health_state_t;
 
 health_state_t health_state = HEALTH_NORMAL;
 /*****************************************************/
 
+/*************************ï¿½ï¿½ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¿ï¿½ï¿½Æ£ï¿½power_controlï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½Ý²ï¿½ï¿½?ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½?ï¿½Ä³ï¿½ï¿½ï¿½Ê¹ï¿½Ã³Ì¶È£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ£ï¿??****************************/
+typedef enum
+{
+	REMOTE_CONTROL, // Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+	NAV_NORMAL_MODE,
+	HURT,
+	UPHILL
+} chassis_max_power_control_t;
+
+chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
+/*****************************************************/
 chassis_motor_t chassis_m3508[4] = {0};
 chassis_control_t chassis_control;
 uint8_t chassis_follow_gimbal_zerochange_flag = 0;
 fp32 chassis_follow_gimbal_zero_actual = CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
 fp32 chassis_power_limit = 0, chassis_power_buffer = 0;
-double init_chassis_power = 0.0;
+fp32 init_chassis_power = 0.0;
 const fp32 factor[3] = {1.54, 1.54, 1.54};
 
 static void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-16384,+16384
 {
-	static CAN_TxHeaderTypeDef chassis_tx_message;
-	static uint8_t chassis_can_send_data[8];
+	CAN_TxHeaderTypeDef chassis_tx_message;
+	uint8_t chassis_can_send_data[8];
 	uint32_t send_mail_box;
 	chassis_tx_message.StdId = CAN_CHASSIS_ALL_ID;
 	chassis_tx_message.IDE = CAN_ID_STD;
@@ -99,458 +109,416 @@ static void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int1
 	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
 	if (status != HAL_OK)
 	{
-		// ???????????
+		// ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Üµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½canï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
 		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
 	}
 }
-	void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
+void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
+{
+	CAN_TxHeaderTypeDef cap_tx_message;
+	uint8_t cap_can_send_data[8];
+	uint32_t send_mail_box;
+	cap_tx_message.StdId = CAN_CAP_TX_ID;
+	cap_tx_message.IDE = CAN_ID_STD;
+	cap_tx_message.RTR = CAN_RTR_DATA;
+	cap_tx_message.DLC = 0x08;
+
+	uint16_t temp;
+
+	temp = data1 * 100;
+	cap_can_send_data[0] = temp;
+	cap_can_send_data[1] = temp >> 8;
+	temp = data2 * 100;
+	cap_can_send_data[2] = temp;
+	cap_can_send_data[3] = temp >> 8;
+	temp = data3 * 100;
+	cap_can_send_data[4] = temp;
+	cap_can_send_data[5] = temp >> 8;
+	temp = data4 * 100;
+	cap_can_send_data[6] = temp;
+	cap_can_send_data[7] = temp >> 8;
+
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
+	if (status != HAL_OK)
 	{
-		CAN_TxHeaderTypeDef cap_tx_message;
-		uint8_t cap_can_send_data[8];
-		uint32_t send_mail_box;
-		cap_tx_message.StdId = CAN_CAP_TX_ID;
-		cap_tx_message.IDE = CAN_ID_STD;
-		cap_tx_message.RTR = CAN_RTR_DATA;
-		cap_tx_message.DLC = 0x08;
+		// ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Üµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½canï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+		CAN_TxQueue_Push(&cap_tx_message, cap_can_send_data);
+	}
+}
 
-		uint16_t temp;
+void Chassis_Motor_Init(void)
+{
+	const static fp32 motor_speed_pid[3] = {M3505_MOTOR_SPEED_PID_KP, M3505_MOTOR_SPEED_PID_KI, M3505_MOTOR_SPEED_PID_KD};
+	const static fp32 chassis_follow_gimbal_pid[3] = {CHASSIS_FOLLOW_GIMBAL_PID_KP, CHASSIS_FOLLOW_GIMBAL_PID_KI, CHASSIS_FOLLOW_GIMBAL_PID_KD};
 
-		temp = data1 * 100;
-		cap_can_send_data[0] = temp;
-		cap_can_send_data[1] = temp >> 8;
-		temp = data2 * 100;
-		cap_can_send_data[2] = temp;
-		cap_can_send_data[3] = temp >> 8;
-		temp = data3 * 100;
-		cap_can_send_data[4] = temp;
-		cap_can_send_data[5] = temp >> 8;
-		temp = data4 * 100;
-		cap_can_send_data[6] = temp;
-		cap_can_send_data[7] = temp >> 8;
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		PID_init(&chassis_m3508[i].pid, PID_POSITION, motor_speed_pid, M3505_MOTOR_SPEED_PID_MAX_OUT, M3505_MOTOR_SPEED_PID_MAX_IOUT);
+	}
+	PID_init(&chassis_control.chassis_follow_gimbal_pid, PID_POSITION, chassis_follow_gimbal_pid, CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT, CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT);
+}
 
-		HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
+static void Chassis_Max_Power_Update()
+{
+	switch (rc_ctrl.rc.s[1])
+	{
+	case RC_SW_MID:
+		chassis_max_power_control_flag = REMOTE_CONTROL;
+		break;
+	case RC_SW_UP:
+		if (health_state == HEALTH_NORMAL)
+			chassis_max_power_control_flag = NAV_NORMAL_MODE;
+		else if (health_state == HEALTH_HURT)
+			chassis_max_power_control_flag = HURT;
+		break;
+	}
+}
+void power_control()
+{
+	fp32 scaled_give_power[4];
+	fp32 initial_give_power[4];
+	fp32 final_give_power[4];
+
+	init_chassis_power = 0;
+
+	Chassis_Max_Power_Update();
+
+	if (cap_data.cap_per > 0.3f) // ï¿½ï¿½ï¿½ï¿½Ã»Õ¥ï¿½É¾ï¿½ï¿½ï¿½Õ¥Õ¥ ï¿½ï¿½ï¿½ï¿½Ð´Ì«ï¿½Í·ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	{
+		switch (chassis_max_power_control_flag)
+		{
+		case REMOTE_CONTROL:
+			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
+			break;
+		case NAV_NORMAL_MODE:
+			chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+			break;
+		case HURT:
+			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 70;
+			break;
+		case UPHILL:
+			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
+			break;
+		}
+	}
+	else
+	{
+		chassis_power_limit = Game_Robot_State.chassis_power_limit - (1 - cap_data.cap_per) * 10;
+	}
+	if (!cap_recieve_flag)
+	{
+		chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+	}
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		initial_give_power[i] = toque_coefficient * chassis_m3508[i].give_current * chassis_m3508[i].speed + k1 * chassis_m3508[i].give_current * chassis_m3508[i].give_current + k2 * chassis_m3508[i].speed * chassis_m3508[i].speed + constant;
+		if (initial_give_power[i] < 0)
+			continue;
+		init_chassis_power += initial_give_power[i];
 	}
 
-	void Chassis_Motor_Init(void)
+	if (init_chassis_power > chassis_power_limit)
 	{
-		const static fp32 motor_speed_pid[3] = {M3505_MOTOR_SPEED_PID_KP, M3505_MOTOR_SPEED_PID_KI, M3505_MOTOR_SPEED_PID_KD};
-		const static fp32 chassis_follow_gimbal_pid[3] = {CHASSIS_FOLLOW_GIMBAL_PID_KP, CHASSIS_FOLLOW_GIMBAL_PID_KI, CHASSIS_FOLLOW_GIMBAL_PID_KD};
-
+		fp32 power_scale = chassis_power_limit / init_chassis_power;
 		for (uint8_t i = 0; i < 4; i++)
 		{
-			PID_init(&chassis_m3508[i].pid, PID_POSITION, motor_speed_pid, M3505_MOTOR_SPEED_PID_MAX_OUT, M3505_MOTOR_SPEED_PID_MAX_IOUT);
-		}
-		PID_init(&chassis_control.chassis_follow_gimbal_pid, PID_POSITION, chassis_follow_gimbal_pid, CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT, CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT);
-	}
-
-	void power_control()
-	{
-		fp32 scaled_give_power[4];
-		uint8_t chassis_power_limit_rmul = Game_Robot_State.chassis_power_limit;
-
-		init_chassis_power = 0;
-
-		static float initial_give_power[4];
-		for (uint8_t i = 0; i < 4; i++)
-		{
-			initial_give_power[i] = toque_coefficient * chassis_m3508[i].give_current * chassis_m3508[i].speed // ???????????RM2023-?????????????????????????????????
-									+ k1 * chassis_m3508[i].give_current * chassis_m3508[i].give_current + k2 * chassis_m3508[i].speed * chassis_m3508[i].speed + constant;
-			if (initial_give_power[i] < 0) // ????????????????????????
-				continue;
-			init_chassis_power += initial_give_power[i];
-		}
-
-		if (init_chassis_power > chassis_power_limit_rmul)
-		{
-			fp32 power_scale = chassis_power_limit_rmul / init_chassis_power;
-			for (uint8_t i = 0; i < 4; i++)
+			scaled_give_power[i] = initial_give_power[i] * power_scale;
+			if (scaled_give_power[i] < 0)
 			{
-				scaled_give_power[i] = initial_give_power[i] * power_scale; // ?????????????????
-				if (scaled_give_power[i] < 0)
-				{
-					continue;
-				}
-				fp32 b = toque_coefficient * chassis_m3508[i].speed;
-				fp32 c = k2 * chassis_m3508[i].speed * chassis_m3508[i].speed - scaled_give_power[i] + constant;
+				continue;
+			}
+			fp32 b = toque_coefficient * chassis_m3508[i].speed;
+			fp32 c = k2 * chassis_m3508[i].speed * chassis_m3508[i].speed - scaled_give_power[i] + constant;
 
-				if (chassis_m3508[i].give_current > 0) // ????????????????pid????????????????????
+			if (chassis_m3508[i].give_current > 0)
+			{
+				fp32 temp = (-b + sqrt(b * b - 4 * k1 * c)) / (2 * k1);
+				if (temp > 16000)
 				{
-					fp32 temp = (-b + sqrt(b * b - 4 * k1 * c)) / (2 * k1);
-					if (temp > 16000)
-					{
-						chassis_m3508[i].give_current = 16000;
-					}
-					else
-						chassis_m3508[i].give_current = temp;
+					chassis_m3508[i].give_current = 16000;
 				}
 				else
+					chassis_m3508[i].give_current = temp;
+			}
+			else
+			{
+				fp32 temp = (-b - sqrt(b * b - 4 * k1 * c)) / (2 * k1);
+				if (temp < -16000)
 				{
-					fp32 temp = (-b - sqrt(b * b - 4 * k1 * c)) / (2 * k1);
-					if (temp < -16000)
-					{
-						chassis_m3508[i].give_current = -16000;
-					}
-					else
-						chassis_m3508[i].give_current = temp;
+					chassis_m3508[i].give_current = -16000;
 				}
+				else
+					chassis_m3508[i].give_current = temp;
 			}
 		}
 	}
+}
 
-	void Chassis_Motor_Data_Update(void)
+void Chassis_Motor_Data_Update(void)
+{
+	static float lpf_ratio = 0.0f;
+	static fp32 chassis_m3508_last_speed[4];
+	for (uint8_t i = 0; i < 4; i++)
 	{
-		static float lpf_ratio = 0.0f;
-		static fp32 chassis_m3508_last_speed[4];
-		for (uint8_t i = 0; i < 4; i++)
+		chassis_m3508[i].speed = motor_measure_chassis[i].speed_rpm;
+
+		chassis_m3508[i].speed = (chassis_m3508[i].speed) * (1 - lpf_ratio) + chassis_m3508_last_speed[i] * lpf_ratio;
+		chassis_m3508_last_speed[i] = motor_measure_chassis[i].speed_rpm;
+	}
+	//	chassis_power_limit=Game_Robot_State.chassis_power_limit; //
+	chassis_power_buffer = Power_Heat_Data.buffer_energy; //
+}
+
+static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 vy_set, const fp32 wz_set, fp32 *wheel0, fp32 *wheel1, fp32 *wheel2, fp32 *wheel3)
+{
+	*wheel0 = (+vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
+	*wheel1 = (+vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
+	*wheel2 = (-vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
+	*wheel3 = (-vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
+}
+
+void Health_Monitor_Update(void)
+{
+	if (rc_ctrl.rc.s[1] != RC_SW_UP)
+		return;
+
+	static uint32_t hurt_start_time = 0;
+	static uint16_t last_health = 0;
+	uint16_t current_health = Game_Robot_State.current_HP; // ?????????
+
+	switch (health_state)
+	{
+	case HEALTH_NORMAL:
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ????????Ûš??
 		{
-			chassis_m3508[i].speed = motor_measure_chassis[i].speed_rpm;
-
-			chassis_m3508[i].speed = (chassis_m3508[i].speed) * (1 - lpf_ratio) + chassis_m3508_last_speed[i] * lpf_ratio;
-			chassis_m3508_last_speed[i] = motor_measure_chassis[i].speed_rpm;
+			health_state = HEALTH_HURT;
+			hurt_start_time = xTaskGetTickCount();
 		}
-		//	chassis_power_limit=Game_Robot_State.chassis_power_limit; // ???????????
-		chassis_power_buffer = Power_Heat_Data.buffer_energy; // ???????????
-	}
+		break;
 
-	static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 vy_set, const fp32 wz_set, fp32 *wheel0, fp32 *wheel1, fp32 *wheel2, fp32 *wheel3)
-	{
-		// because the gimbal is in front of chassis, when chassis rotates, wheel 0 and wheel 1 should be slower and wheel 2 and wheel 3 should be faster
-		// ???????? ????????????????????????? 0 ??1 ????????????? ???????? 2,3 ??????????
-		*wheel0 = (+vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
-		*wheel1 = (+vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
-		*wheel2 = (-vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
-		*wheel3 = (-vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
-	}
-
-	void Health_Monitor_Update(void)
-	{
-
-		static uint32_t hurt_start_time = 0;
-		static uint16_t last_health = 0;
-		uint16_t current_health = Game_Robot_State.current_HP; // ?????????
-
-		switch (health_state)
+	case HEALTH_HURT:
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ??????????
 		{
-		case HEALTH_NORMAL:
-			if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ????????Ûš??
-			{
-				health_state = HEALTH_HURT;
-				hurt_start_time = xTaskGetTickCount();
-			}
-			break;
-
-		case HEALTH_HURT:
-			if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ??????????
-			{
-				hurt_start_time = xTaskGetTickCount(); // ???¨¹??
-			}
-			else if (xTaskGetTickCount() - hurt_start_time > pdMS_TO_TICKS(3000))
-			{
-				health_state = HEALTH_NORMAL;
-			}
-			break;
+			hurt_start_time = xTaskGetTickCount();
 		}
-
-		last_health = current_health; // ??????????
-	}
-
-	float Limit_To_180(float in)
-	{
-		while (in < -180 || in > 180)
-		{					   // ?????????????????????[-??,??]????
-			if (in < -180)	   // ?????????§³??-??
-				in = in + 360; // ????2??
-			else if (in > 180) // ?????????????
-				in = in - 360; // ??§³2??
-		}
-		return in;
-	}
-
-	fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle, fp32 Target_Speed)
-	{
-		float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f); // ?????????????????????[-??,??]????
-
-		// ????????§³???????
-		if (angle_front_err > 135 || angle_front_err <= -135)
-			return CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
-		if (angle_front_err > 45 && angle_front_err <= 135)
-			return CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO;
-		if (angle_front_err > -45 && angle_front_err <= 45)
-			return CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
-		if (angle_front_err > -135 && angle_front_err <= -45)
-			return CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO;
-	}
-
-	void chassis_vector_set(void)
-	{
-
-		if (rc_ctrl.rc.s[1] == RC_SW_DOWN) // stop
+		else if (xTaskGetTickCount() - hurt_start_time > pdMS_TO_TICKS(3000))
 		{
-			chassis_control.vx = 0;
-			chassis_control.vy = 0;
-			chassis_control.wz = 0;
-			chassis_follow_gimbal_zerochange_flag = 1; // ??????0 ?????????§Ý???????? ??????????????????????
+			health_state = HEALTH_NORMAL;
 		}
-		else if ((rc_ctrl.rc.s[1] == RC_SW_MID) && rc_ctrl.rc.ch[4] < 500 && rc_ctrl.rc.ch[4] > -500) // normal move ??????? ??????????
+		break;
+	}
+	last_health = current_health;
+}
+
+float Limit_To_180(float in)
+{
+	while (in < -180 || in > 180)
+	{					   // ?????????????????????[-??,??]????
+		if (in < -180)	   // ?????????ï¿½ï¿½??-??
+			in = in + 360; // ????2??
+		else if (in > 180) // ?????????????
+			in = in - 360; // ??ï¿½ï¿½2??
+	}
+	return in;
+}
+
+fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle, fp32 Target_Speed)
+{
+	float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f); // ?????????????????????[-??,??]????
+
+	// ????????ï¿½ï¿½???????
+	if (angle_front_err > 135 || angle_front_err <= -135)
+		return CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
+	if (angle_front_err > 45 && angle_front_err <= 135)
+		return CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO;
+	if (angle_front_err > -45 && angle_front_err <= 45)
+		return CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
+	if (angle_front_err > -135 && angle_front_err <= -45)
+		return CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO;
+}
+
+void chassis_vector_set(void)
+{
+	static fp32 vx, vy;
+	fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
+
+	if (rc_ctrl.rc.s[1] == RC_SW_DOWN) // stop
+	{
+		chassis_follow_gimbal_zerochange_flag = 1; // ??????0 ?????????ï¿½ï¿½???????? ??????????????????????
+	}
+	else if ((rc_ctrl.rc.s[1] == RC_SW_MID) && rc_ctrl.rc.ch[4] < 500 && rc_ctrl.rc.ch[4] > -500) // normal move
+	{
+		if (chassis_follow_gimbal_zerochange_flag == 1)
 		{
-			if (chassis_follow_gimbal_zerochange_flag == 1)
-			{
-				// ?????? ??????yaw??????????
-				chassis_follow_gimbal_zero_actual = Angle_Z_Suit_ZERO_Get(gimbal_m6020[0].ENC_angle, gimbal_m6020[0].ENC_speed); // ?????????§Ý?
-				chassis_follow_gimbal_zerochange_flag = 0;
-			}
+			// ?????? ??????yaw??????????
+			chassis_follow_gimbal_zero_actual = Angle_Z_Suit_ZERO_Get(gimbal_m6020[0].ENC_angle, gimbal_m6020[0].ENC_speed); // ?????????ï¿½ï¿½?
+			chassis_follow_gimbal_zerochange_flag = 0;
+		}
+		chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
+		//      chassis_control.chassis_follow_gimbal_angle=(Angle_Z_Suit_Err_Get((float)(gimbal_m6020[0].ENC_angle)/8192.0f*360,gimbal_m6020[0].ENC_speed))/(2*PI)*360;
+		if (chassis_control.chassis_follow_gimbal_angle > 180)
+		{
+			chassis_control.chassis_follow_gimbal_angle -= 360;
+		}
+		PID_calc(&chassis_control.chassis_follow_gimbal_pid, chassis_control.chassis_follow_gimbal_angle, 0);
+		chassis_control.wz = -chassis_control.chassis_follow_gimbal_pid.out;
+
+		fp32 sin_yaw_rad;
+
+		vx = ramp_control(vx, rc_ctrl.rc.ch[2] * 9, 0.7f);
+		vy = ramp_control(vy, rc_ctrl.rc.ch[3] * 9, 0.7f);
+
+		sin_yaw_rad = -(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f;
+		sin_yaw = arm_sin_f32(sin_yaw_rad);
+		cos_yaw = arm_cos_f32(sin_yaw_rad);
+		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
+		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
+	}
+	else if (rc_ctrl.rc.s[1] == RC_SW_MID) // rotate mode
+	{
+		// ????????????????chassis_follow_gimbal_angle
+		chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.012) % 8192) / 8192.0f * 360.0f;
+		if (chassis_control.chassis_follow_gimbal_angle > 180)
+		{
+			chassis_control.chassis_follow_gimbal_angle -= 360;
+		}
+
+		vx = ramp_control(vx, rc_ctrl.rc.ch[2] * 9, 0.7f);
+		vy = ramp_control(vy, rc_ctrl.rc.ch[3] * 9, 0.7f);
+
+		sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
+		cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
+		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
+		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
+
+		if (rc_ctrl.rc.ch[4] <= -500)
+		{
+			chassis_control.wz = ROTATE_WZ_MAX;
+		}
+		else if (rc_ctrl.rc.ch[4] >= 500)
+		{
+			chassis_control.wz = ROTATE_WZ_MIN;
+		}
+
+		chassis_follow_gimbal_zerochange_flag = 1; // ???? ???ï¿½ï¿½?????ï¿½ï¿½??????????????????
+	}
+	else if (rc_ctrl.rc.s[1] == RC_SW_UP) // automatic mode NUC?????????
+	{
+
+		vx = -ramp_control(vx, (float)Chassis_Data_Receive.vy * factor[0] * 800, 0.7f);
+		vy = ramp_control(vy, (float)Chassis_Data_Receive.vx * factor[1] * 800, 0.7f);
+
+		if (Rotate_Data_Receive.rotate == 0) // ??????????
+		{
 			chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
-			//      chassis_control.chassis_follow_gimbal_angle=(Angle_Z_Suit_Err_Get((float)(gimbal_m6020[0].ENC_angle)/8192.0f*360,gimbal_m6020[0].ENC_speed))/(2*PI)*360;
-			if (chassis_control.chassis_follow_gimbal_angle > 180)
+			if (chassis_control.chassis_follow_gimbal_angle > 180.0f)
 			{
-				chassis_control.chassis_follow_gimbal_angle -= 360;
+				chassis_control.chassis_follow_gimbal_angle -= 360.0f;
 			}
 			PID_calc(&chassis_control.chassis_follow_gimbal_pid, chassis_control.chassis_follow_gimbal_angle, 0);
 			chassis_control.wz = -chassis_control.chassis_follow_gimbal_pid.out;
 
-			fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-			fp32 vx, vy;
-			float sin_yaw_rad;
-
-			vx = ramp_control(0, rc_ctrl.rc.ch[2] * 30, 0.3f);
-			vy = ramp_control(0, rc_ctrl.rc.ch[3] * 30, 0.3f);
-
-			sin_yaw_rad = -(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f;
-			sin_yaw = arm_sin_f32(sin_yaw_rad);
-			cos_yaw = arm_cos_f32(sin_yaw_rad);
-			chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-			chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
+			sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
+			cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
 		}
-		else if (rc_ctrl.rc.s[1] == RC_SW_MID) // rotate mode §³????
+		else // ï¿½ï¿½????
 		{
-			// ????????????????chassis_follow_gimbal_angle????§³?????????????????????
-			chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.012) % 8192) / 8192.0f * 360.0f;
+			chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.01) % 8192) / 8192.0f * 360.0f;
 			if (chassis_control.chassis_follow_gimbal_angle > 180)
 			{
 				chassis_control.chassis_follow_gimbal_angle -= 360;
 			}
-
-			fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-			fp32 vx, vy;
-			static fp32 vx_last_rotate, vy_last_rotate;
-			vx = ramp_control(0, rc_ctrl.rc.ch[2] * 12, 0.5f);
-			vy = ramp_control(0, rc_ctrl.rc.ch[3] * 12, 0.5f);
-			vx = 0.5 * vx + 0.5 * vx_last_rotate;
-			vy = 0.5 * vy + 0.5 * vy_last_rotate;
-			vx_last_rotate = ramp_control(0, rc_ctrl.rc.ch[2] * 8, 0.4f);
-			vy_last_rotate = ramp_control(0, rc_ctrl.rc.ch[3] * 8, 0.4f);
-
 			sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
 			cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-			chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-			chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
 
-			if (rc_ctrl.rc.ch[4] <= -500)
-			{
-				chassis_control.wz = ROTATE_WZ_MAX;
-			}
-			else if (rc_ctrl.rc.ch[4] >= 500)
-			{
-				chassis_control.wz = ROTATE_WZ_MIN;
-			}
+			static float rotate_sine_angle = 0;
+			static float rotate_sine_T = 1;
 
-			chassis_follow_gimbal_zerochange_flag = 1; // ???? ???§³?????§Ý??????????????????
+			//			rotate_sine_angle+=(0.001/rotate_sine_T*360);
+			//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
+			if (health_state == HEALTH_HURT)
+			{
+				chassis_control.wz = -(float)Rotate_Data_Receive.rotate;
+			}
+			else
+			{
+				chassis_control.wz = -(float)Rotate_Data_Receive.rotate * ROTATE_WEAK;
+			}
+			chassis_follow_gimbal_zerochange_flag = 1;
 		}
-		else if (rc_ctrl.rc.s[1] == RC_SW_UP) // automatic mode NUC?????????
-		{
-			fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-			fp32 vx, vy;
-
-			vx = -(float)Chassis_Data_Receive.vy * factor[0] * 800;
-			vy = (float)Chassis_Data_Receive.vx * factor[1] * 800;
-
-			if (Rotate_Data_Receive.rotate == 0) // ??????????
-			{
-				chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
-				if (chassis_control.chassis_follow_gimbal_angle > 180.0f)
-				{
-					chassis_control.chassis_follow_gimbal_angle -= 360.0f;
-				}
-				PID_calc(&chassis_control.chassis_follow_gimbal_pid, chassis_control.chassis_follow_gimbal_angle, 0);
-				chassis_control.wz = -chassis_control.chassis_follow_gimbal_pid.out;
-
-				sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
-				cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
-				chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-				chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
-			}
-			else // §³????
-			{
-				chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.01) % 8192) / 8192.0f * 360.0f;
-				if (chassis_control.chassis_follow_gimbal_angle > 180)
-				{
-					chassis_control.chassis_follow_gimbal_angle -= 360;
-				}
-				sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-				cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-				chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-				chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
-
-				static float rotate_sine_angle = 0;
-				static float rotate_sine_T = 1;
-
-				//			rotate_sine_angle+=(0.001/rotate_sine_T*360);
-				//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
-				if (health_state == HEALTH_HURT)
-				{
-					chassis_control.wz = -(float)Rotate_Data_Receive.rotate;
-				}
-				else
-				{
-					chassis_control.wz = -(float)Rotate_Data_Receive.rotate * ROTATE_WEAK;
-				}
-				chassis_follow_gimbal_zerochange_flag = 1;
-			}
-		}
+		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
+		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
 	}
+}
 
-	void chassis_power_cap_control(void) // ??????¨®???
+extern fp32 INS_angle[3];
+void chassis_feedback_update(void)
+{
+	Chassis_Data_Tramsit.vy = (-chassis_m3508[0].speed + chassis_m3508[1].speed + chassis_m3508[2].speed - chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+	Chassis_Data_Tramsit.vx = (-chassis_m3508[0].speed - chassis_m3508[1].speed + chassis_m3508[2].speed + chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+	Chassis_Data_Tramsit.wz = (-chassis_m3508[0].speed - chassis_m3508[1].speed - chassis_m3508[2].speed - chassis_m3508[3].speed) * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+}
+
+/**
+ * @brief  ???ï¿½ï¿½???
+ * @param  ???????Ú…???????
+ * @retval ????
+ */
+float ramp_control(float ref, float set, float accel)
+{
+	fp32 ramp = limit(accel, 0, 1) * (set - ref);
+	return ref + ramp;
+}
+
+/**
+ * @brief  ?????ï¿½ï¿½????
+ * @param  ????????,??ï¿½ï¿½?,????
+ * @retval ???????
+ */
+fp32 limit(float data, float min, float max)
+{
+	if (data >= max)
+		return max;
+	if (data <= min)
+		return min;
+	return data;
+}
+
+void Chassis_Task(void const *argument)
+{
+	Chassis_Motor_Init();
+
+	vTaskDelay(200);
+
+	while (1)
 	{
-		float total_current_limit = 0.0f;
-		float total_current = 0.0f;
+		Chassis_Motor_Data_Update();
 
-		if (cap_data.cap_per == 0)
+		Health_Monitor_Update();
+
+		chassis_vector_set();
+
+		chassis_vector_to_mecanum_wheel_speed(chassis_control.vx, chassis_control.vy, chassis_control.wz, &chassis_m3508[0].speed_set, &chassis_m3508[1].speed_set, &chassis_m3508[2].speed_set, &chassis_m3508[3].speed_set);
+
+		for (uint8_t i = 0; i < 4; i++)
 		{
-			total_current_limit = NO_JUDGE_TOTAL_CURRENT_LIMIT;
+
+			PID_calc(&chassis_m3508[i].pid, chassis_m3508[i].speed, chassis_m3508[i].speed_set);
+
+			chassis_m3508[i].give_current = chassis_m3508[i].pid.out;
 		}
+
+		//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //
+		if (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE))
+			CAN_Chassis_CMD(0, 0, 0, 0);
 		else
 		{
-			if (cap_data.cap_per < 0.3f)
-			{
-				float power_scale;
-
-				power_scale = cap_data.cap_per / 0.3f;
-				total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT * power_scale;
-			}
-			else
-			{
-				total_current_limit = NO_JUDGE_TOTAL_CURRENT_LIMIT;
-				//			if(cap_data.chassis_power > chassis_power_limit*0.75f)
-				//			{
-				//				float power_scale;
-				//				if(cap_data.chassis_power < chassis_power_limit)
-				//				{
-				//					power_scale = (chassis_power_limit - cap_data.chassis_power) / (chassis_power_limit - chassis_power_limit*0.75f);
-				//				}
-				//				else
-				//				{
-				//					power_scale = 0.0f;
-				//				}
-				//
-				//				total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT + POWER_TOTAL_CURRENT_LIMIT * power_scale;
-				//			}
-				//			else
-				//			{
-				//				total_current_limit = BUFFER_TOTAL_CURRENT_LIMIT + POWER_TOTAL_CURRENT_LIMIT;
-				//			}
-			}
+			CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
+			power_control();
+			//				chassis_feedback_update();
+			CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
 		}
-		total_current = 0.0f;
-		for (uint8_t i = 0; i < 4; i++)
-		{
-			total_current += fabs((float)chassis_m3508[i].give_current);
-		}
-
-		if (total_current > total_current_limit)
-		{
-			float current_scale = total_current_limit / total_current;
-			chassis_m3508[0].give_current *= current_scale;
-			chassis_m3508[1].give_current *= current_scale;
-			chassis_m3508[2].give_current *= current_scale;
-			chassis_m3508[3].give_current *= current_scale;
-		}
+		vTaskDelay(2);
 	}
-
-	extern fp32 INS_angle[3];
-	void chassis_feedback_update(void)
-	{
-		for (uint8_t i = 0; i < 4; i++)
-		{
-			//		fp32 temp_angle=motor_measure_chassis[i].ecd-motor_measure_chassis[i].last_ecd;
-			//		if(temp_angle>=4096)
-			//		{
-			//			temp_angle=(8192.0f-motor_measure_chassis[i].ecd)+motor_measure_chassis[i].last_ecd;
-			//		}
-			//		else if(temp_angle<=-4096)
-			//		{
-			//			temp_angle=(8192.0f-motor_measure_chassis[i].last_ecd)+motor_measure_chassis[i].ecd;
-			//		}
-			// ?????????????????????PID???
-			//		chassis_m3508[i].speed = M3508_MOTOR_RPM_TO_VECTOR * motor_measure_chassis[i].speed_rpm; // rp/s -> m/s
-		}
-		Chassis_Data_Tramsit.y = (-motor_measure_chassis[0].code + motor_measure_chassis[1].code + motor_measure_chassis[2].code - motor_measure_chassis[3].code) * 0.70710678f / 4.0f * M3508_MOTOR_ECD_TO_DISTANCE;
-		Chassis_Data_Tramsit.x = (-motor_measure_chassis[0].code - motor_measure_chassis[1].code + motor_measure_chassis[2].code + motor_measure_chassis[3].code) * 0.70710678f / 4.0f * M3508_MOTOR_ECD_TO_DISTANCE;
-		Chassis_Data_Tramsit.z = INS_angle[0] / 57.18f;
-		Chassis_Data_Tramsit.vy = (-chassis_m3508[0].speed + chassis_m3508[1].speed + chassis_m3508[2].speed - chassis_m3508[3].speed) * 0.70710678f / 4.0f;
-		Chassis_Data_Tramsit.vx = (-chassis_m3508[0].speed - chassis_m3508[1].speed + chassis_m3508[2].speed + chassis_m3508[3].speed) * 0.70710678f / 4.0f;
-		Chassis_Data_Tramsit.wz = (-chassis_m3508[0].speed - chassis_m3508[1].speed - chassis_m3508[2].speed - chassis_m3508[3].speed) / 4.0f;
-	}
-
-	/**
-	 * @brief  ???¦Ï???
-	 * @param  ???????Ú…???????
-	 * @retval ????
-	 */
-	float ramp_control(float ref, float set, float accel)
-	{
-		fp32 ramp = limit(accel, 0, 1) * (set - ref);
-		return ref + ramp;
-	}
-
-	/**
-	 * @brief  ?????¦¶????
-	 * @param  ????????,??§³?,????
-	 * @retval ???????
-	 */
-	fp32 limit(float data, float min, float max)
-	{
-		if (data >= max)
-			return max;
-		if (data <= min)
-			return min;
-		return data;
-	}
-
-	void Chassis_Task(void const *argument)
-	{
-		Chassis_Motor_Init();
-
-		vTaskDelay(200);
-
-		while (1)
-		{
-			Chassis_Motor_Data_Update();
-
-			Health_Monitor_Update();
-
-			chassis_vector_set();
-
-			chassis_vector_to_mecanum_wheel_speed(chassis_control.vx, chassis_control.vy, chassis_control.wz, &chassis_m3508[0].speed_set, &chassis_m3508[1].speed_set, &chassis_m3508[2].speed_set, &chassis_m3508[3].speed_set);
-
-			for (uint8_t i = 0; i < 4; i++)
-			{
-
-				PID_calc(&chassis_m3508[i].pid, chassis_m3508[i].speed, chassis_m3508[i].speed_set);
-
-				chassis_m3508[i].give_current = chassis_m3508[i].pid.out;
-			}
-
-			//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //?????detect_task
-			if (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE))
-				CAN_Chassis_CMD(0, 0, 0, 0);
-			else
-			{
-				//				chassis_feedback_update();
-				power_control();
-				//				chassis_power_cap_control();
-				CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
-			}
-
-			vTaskDelay(2);
-		}
-	}
+}

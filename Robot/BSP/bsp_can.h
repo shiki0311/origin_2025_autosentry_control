@@ -78,6 +78,7 @@ extern motor_measure_t motor_measure_chassis[4];
 extern motor_measure_t motor_measure_gimbal[2];
 extern motor_measure_t motor_measure_shoot[3];
 extern DM_motor_data_t DM_pitch_motor_data;
+extern int32_t dial_angle ;
 
 float uint_to_float(int x_int, float x_min, float x_max, int bits);
 int float_to_uint(float x, float x_min, float x_max, int bits);
