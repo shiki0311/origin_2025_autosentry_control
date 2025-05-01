@@ -406,10 +406,10 @@ void chassis_vector_set(void)
 	else if (rc_ctrl.rc.s[1] == RC_SW_UP) // automatic mode NUC?????????
 	{
 
-		vx = -ramp_control(vx, (float)Chassis_Data_Receive.vy * factor[0] * 800, 0.7f);
-		vy = ramp_control(vy, (float)Chassis_Data_Receive.vx * factor[1] * 800, 0.7f);
+		vx = -ramp_control(vx, (float)AutoAim_Data_Receive.vy * factor[0] * 800, 0.7f);
+		vy = ramp_control(vy, (float)AutoAim_Data_Receive.vx * factor[1] * 800, 0.7f);
 
-		if (Rotate_Data_Receive.rotate == 0) // ??????????
+		if (AutoAim_Data_Receive.rotate == 0) // ??????????
 		{
 			chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
 			if (chassis_control.chassis_follow_gimbal_angle > 180.0f)
@@ -439,11 +439,11 @@ void chassis_vector_set(void)
 			//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
 			if (health_state == HEALTH_HURT)
 			{
-				chassis_control.wz = -(float)Rotate_Data_Receive.rotate;
+				chassis_control.wz = -(float)AutoAim_Data_Receive.rotate;
 			}
 			else
 			{
-				chassis_control.wz = -(float)Rotate_Data_Receive.rotate * ROTATE_WEAK;
+				chassis_control.wz = -(float)AutoAim_Data_Receive.rotate * ROTATE_WEAK;
 			}
 			chassis_follow_gimbal_zerochange_flag = 1;
 		}

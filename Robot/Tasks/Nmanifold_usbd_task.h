@@ -73,12 +73,6 @@ typedef struct{
 	uint8_t Cmd_ID;			//������
 }__attribute__((__packed__)) Protocol_Head_Data;	//ͨ��Э��������ǰ������
 
-/*typedef struct{
-	float Gyro[3];			//���ٶȣ�X��Y��Z��
-	float Accel[3];			//���ٶȣ�X��Y��Z��
-	float Quat[4];			//��Ԫ����X��Y��Z��W��
-}__attribute__((__packed__)) IMU_Data;//IMU����*/
-
 typedef struct{
 	float Yaw;							//��ǰyaw���㣩
 	float Pitch;						//��ǰpitch���㣩
@@ -119,7 +113,7 @@ typedef struct{
 
 	uint16_t red_1_HP;					//˫��Ѫ��
 	uint16_t red_2_HP;
-	uint16_t red_3_HP;					//Ѫ��
+	uint16_t red_3_HP;					//Ѫ��
 	uint16_t red_4_HP;
 	uint16_t red_7_HP;
 	uint16_t red_outpost_HP;
@@ -158,25 +152,6 @@ typedef struct{
 	float pitch_speed;	
 }__attribute__((__packed__)) AutoAim_Data_Rx;//��������
 
-typedef struct{
-	fp32 vx;//	int16_t vx;						//ǰ�����ٶȣ�m/s)
-	fp32 vy;//	int16_t vy;					//�����ٶȣ�m/s)
-	fp32 yaw_speed;//	int16_t yaw_speed;			//yaw���ٶ�(rad/s)
-	fp32 pitch_speed;
-}__attribute__((__packed__)) Chassis_Data_Rx;//��������
-
-typedef struct{
-	float vx;//	int16_t vx;						//ǰ�����ٶȣ�m/s)
-	float vy;//	int16_t vy;					//�����ٶȣ�m/s)
-	float rotate;
-	float yaw_speed;//	int16_t yaw_speed;			//yaw���ٶ�(rad/s)
-	float pitch_speed;
-
-}__attribute__((__packed__)) Move_cmd_Data_Rx;//�������� ��������
-
-typedef struct{
-	int16_t rotate;						//��ʱ���ٶ�(rad/s)
-}__attribute__((__packed__)) Rotate_Data_Rx;//С��������
 /*******************************************END**********************************************/
 
 #pragma pack(pop)
@@ -184,11 +159,8 @@ typedef struct{
 
 //����ӿ�
 extern AutoAim_Data_Rx AutoAim_Data_Receive;
-extern Chassis_Data_Rx Chassis_Data_Receive;
 extern Chassis_Data_Tx Chassis_Data_Tramsit;
 extern uint8_t Autoaim_Mode, Autoaim_Armor;
-extern Rotate_Data_Rx Rotate_Data_Receive;
-extern Chassis_Gimbal_Angle_TX Chassis_Gimbal_Angle_Tramsit;
 extern uint8_t Referee_Buffer[2][512];
 extern uint16_t LENTH_REFEREE_BUF;
 extern Dial_Switch_Data Dial_Switch;

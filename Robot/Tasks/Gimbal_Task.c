@@ -31,7 +31,7 @@
 #define YAW_MOTOR_SPEED_PID_MAX_OUT 30000.0f
 #define YAW_MOTOR_SPEED_PID_MAX_IOUT 10000.0f
 
-#define YAW_MOTOR_ANGLE_PID_KP 24.80f
+#define YAW_MOTOR_ANGLE_PID_KP 20.0f
 #define YAW_MOTOR_ANGLE_PID_KI 0.00013113f
 #define YAW_MOTOR_ANGLE_PID_KD 200.3f
 #define YAW_MOTOR_ANGLE_PID_MAX_OUT 1200.0f
@@ -195,7 +195,7 @@ void Yaw_Motor_Control(void)
         else
         {
             zero_speed_flag = 0; //
-            gimbal_m6020[0].INS_speed_set = Chassis_Data_Receive.yaw_speed * RAD_TO_ANGLE;
+            gimbal_m6020[0].INS_speed_set = AutoAim_Data_Receive.yaw_speed * RAD_TO_ANGLE;
         }
     }
 

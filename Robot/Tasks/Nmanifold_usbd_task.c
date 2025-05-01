@@ -16,15 +16,15 @@
   *****************************************************************************
 */
 /*****************************************************************************************
-			��C�塪��NUC����ͨ��Э�飨����汾��C��ײ�ʹ�ò���?
+			��C�塪��NUC����ͨ��Э�飨����汾��C��ײ�ʹ�ò���?
 ��
 ��
 ��
 �ܽ���Դ�ļ����뵽�����У�ͬʱȷ��ͷ�ļ��ڹ��̵İ���Ŀ¼�С�
 ����stm32f4xx_it.c��USART1_IRQHandler_1�����е���USART1_IRQHandler_1������
 ��ʹ��xTaskCreate��osThreadDef+osThreadCreate����manifold_usart_task��FreeRTOS����
-�߼��?���շ��������е�֡ͷ��֡���������ֺ�CRCУ��λ�Ƿ�������
-����һ�еײ����þ�����������¼�����AutoAim_Data_Receive�ṹ���ڻ�ȡ������������ݡ�?
+�߼��?���շ��������е�֡ͷ��֡���������ֺ�CRCУ��λ�Ƿ�������
+����һ�еײ����þ�����������¼�����AutoAim_Data_Receive�ṹ���ڻ�ȡ������������ݡ�?
 *****************************************************************************************/
 #include "Nmanifold_usbd_task.h"
 #include "arm_math.h"
@@ -52,19 +52,14 @@ Working_Mode WMode;
 AutoAim_Data_Tx AutoAim_Data_Tramsit;
 AutoAim_Data_Rx AutoAim_Data_Receive;
 Referee_Data_Tx Referee_Data_Tramsit;
-
 Chassis_Data_Tx Chassis_Data_Tramsit;
-Chassis_Data_Rx Chassis_Data_Receive;
-Move_cmd_Data_Rx Move_cmd_Receive;
-
-Rotate_Data_Rx Rotate_Data_Receive;
 
 Chassis_Gimbal_Angle_TX Chassis_Gimbal_Angle_Tramsit;
 
 Dial_Switch_Data Dial_Switch;
 
 uint8_t Autoaim_Mode = AUTOAIM_MODE_ANTI_TOP; // ��С����ģʽ
-uint8_t Autoaim_Armor = AUTOAIM_ARMOR_AUTO;   // �Զ�ѡ���Сװ��?
+uint8_t Autoaim_Armor = AUTOAIM_ARMOR_AUTO;   // �Զ�ѡ���Сװ��?
 uint8_t autoaim_mode=2,flag_gimbal_ecd_cnt=0;
 uint8_t autoaim_armor=0x10;
 uint8_t flag_AUTOAIM_DATA=0,cnt_AUTOAIM_DATA=0;
@@ -83,7 +78,7 @@ void manifold_usart_task(void)
 		if(++t > 799) 
 			t = 0;
 		
-		//��NUC��λ������������̨��̬��Ϣ������������Ի�ȡ�����������?
+		//��NUC��λ������������̨��̬��Ϣ������������Ի�ȡ�����������?
 		if(t % 7 == 0) 
 		{
 			NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX);	
@@ -107,9 +102,9 @@ uint8_t USBD_IRQHandler(uint8_t* Buf, uint16_t Len)
 			return 1;		
 		RX_Lenth_Total=Len+RX_Lenth_Total;
 	
-		if(NUC_USBD_RxBuf[1] == RX_Lenth_Total) //����У�飬��У��߽���?
+		if(NUC_USBD_RxBuf[1] == RX_Lenth_Total) //����У�飬��У��߽���?
 			{
-				NUC_Data_Unpack();//���ݽ��?
+				NUC_Data_Unpack();//���ݽ��?
 //				CDC_Transmit_FS(NUC_USBD_RxBuf, RX_Lenth_Total);
 				RX_Lenth_Total=0;
 			}
@@ -130,11 +125,6 @@ uint8_t NUC_Data_Unpack(void)
 		case CMD_ID_AUTOAIM_DATA_RX:
 		{
 			memcpy(&AutoAim_Data_Receive, NUC_USBD_RxBuf + 3, sizeof(AutoAim_Data_Rx));
-			Chassis_Data_Receive.vx = AutoAim_Data_Receive.vx;
-			Chassis_Data_Receive.vy = AutoAim_Data_Receive.vy;
-			Chassis_Data_Receive.yaw_speed = AutoAim_Data_Receive.yaw_speed;
-			Chassis_Data_Receive.pitch_speed = AutoAim_Data_Receive.pitch_speed;
-			Rotate_Data_Receive.rotate = AutoAim_Data_Receive.rotate;
 			break;
 		}		/*��һ���е�ʺ����������������һ������һ����68�ֽ�	*/
 							

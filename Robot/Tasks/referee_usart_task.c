@@ -62,7 +62,7 @@ void referee_usart_task(void const * argument)
 		/* ��������ϵͳ���� */
 		vTaskDelay(10);
 		Referee_UnpackFifoData(&Referee_Unpack_OBJ, &Referee_FIFO);
-//		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit, Real_Power, Power_Heat_Data.buffer_energy, 0);
+		Sentry_PushUp_Cmd(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
 	}
 }
 

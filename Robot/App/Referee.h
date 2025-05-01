@@ -75,6 +75,7 @@ extern "C" {
 #define Robot_ID_Blue_Sentry    107 //蓝方哨兵
 #define Robot_ID_Blue_Darts     108 //蓝方飞镖
 #define Robot_ID_Blue_Radar     109 //蓝方雷达
+#define Referee_Server       0x8080 //裁判系统服务器，用于哨兵和雷达自主决策指令
 
 /* 机器人等级 */
 #define Robot_Level_1 1 //1级
@@ -122,6 +123,10 @@ extern "C" {
 #define UI_DataID_Draw5    0x103 //客户端绘制5个图形
 #define UI_DataID_Draw7    0x104 //客户端绘制7个图形
 #define UI_DataID_DrawChar 0x110 //客户端绘制字符图形
+
+/* 雷达，哨兵自主决策cmdID */
+#define SENTRY_AUTO_SEND 		0x0120
+#define LIDAR_AUTO_SEND 		0x0121
 
 /* UI删除操作 */
 #define UI_Delete_Invalid 0 //空操作
@@ -315,6 +320,11 @@ typedef __packed struct  //0x0301 机器人间通信 数据结构体
 	uint8_t *data;
 } robot_interactive_data_t;
 
+typedef __packed struct  //0x0301 机器人间通信 哨兵自主决策指令
+{
+	uint32_t sentry_cmd_data;
+} sentry_cmd_t;
+
 typedef __packed struct  //0x0303 小地图下发信息标识
 {
 	float    target_position_x;
@@ -425,6 +435,15 @@ typedef __packed struct  //绘制UI UI删除图形完整结构体
 	uint16_t CRC16;
 } UI_Delete_t;
 
+typedef __packed struct  //发送哨兵自主决策指令完整结构体
+{
+	frame_header_struct_t Referee_Transmit_Header;
+	uint16_t CMD_ID;
+	ext_student_interactive_header_data_t Interactive_Header;
+	sentry_cmd_t sentry_cmd;
+	uint16_t CRC16;
+} Sentry_Auto_Cmd_Send_t;
+
 #pragma pack(pop)
 /* Structs -------------------------------------------------------------------*/
 /* protocol包头结构体 */
@@ -465,6 +484,9 @@ extern UI_Graph7_t UI_Graph7;
 extern UI_String_t UI_String;
 extern UI_Delete_t UI_Delete;
 
+/* 哨兵专用结构体 */
+extern Sentry_Auto_Cmd_Send_t Sentry_Auto_Cmd_Send;
+
 /* Functions -----------------------------------------------------------------*/
 void Referee_StructInit(void);
 void Referee_UARTInit(uint8_t *Buffer0, uint8_t *Buffer1, uint16_t BufferLength);
@@ -472,6 +494,7 @@ void Referee_UARTInit(uint8_t *Buffer0, uint8_t *Buffer1, uint16_t BufferLength)
 void Referee_UnpackFifoData(unpack_data_t *p_obj, fifo_s_t *referee_fifo);
 void Referee_SolveFifoData(uint8_t *frame);
 
+void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd , uint8_t RobotID);
 void UI_Draw_Line(graphic_data_struct_t *Graph,        //UI图形数据结构体指针
 	                char                   GraphName[3], //图形名 作为客户端的索引
 									uint8_t                GraphOperate, //UI图形操作 对应UI_Graph_XXX的4种操作

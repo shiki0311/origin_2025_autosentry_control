@@ -61,6 +61,9 @@ UI_Graph7_t UI_Graph7;
 UI_String_t UI_String;
 UI_Delete_t UI_Delete;
 
+/* 哨兵专用结构体 */
+Sentry_Auto_Cmd_Send_t Sentry_Auto_Cmd_Send;
+
 /* Functions -----------------------------------------------------------------*/
 /*==============================================================================
               ##### 裁判系统初始化函数 #####
@@ -277,6 +280,32 @@ void Referee_SolveFifoData(uint8_t *frame)
 		default:                                                                                                                           break;
 	}
 }
+/*==============================================================================
+              ##### 哨兵自主决策发送函数 #####
+  ==============================================================================*/
+void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd , uint8_t RobotID)
+{
+	/* 填充 frame_header */
+	Sentry_Auto_Cmd->Referee_Transmit_Header.SOF  = HEADER_SOF;
+	Sentry_Auto_Cmd->Referee_Transmit_Header.data_length = 10;
+	Sentry_Auto_Cmd->Referee_Transmit_Header.seq  = Sentry_Auto_Cmd->Referee_Transmit_Header.seq + 1;
+	Sentry_Auto_Cmd->Referee_Transmit_Header.CRC8 = CRC08_Calculate((uint8_t *)(&Sentry_Auto_Cmd->Referee_Transmit_Header), 4);
+	
+	/* 填充 cmd_id */
+	Sentry_Auto_Cmd->CMD_ID = STUDENT_INTERACTIVE_DATA_CMD_ID;
+	
+	/* 填充 student_interactive_header */
+	Sentry_Auto_Cmd->Interactive_Header.data_cmd_id = SENTRY_AUTO_SEND;
+  Sentry_Auto_Cmd->Interactive_Header.sender_ID   = RobotID ;
+	Sentry_Auto_Cmd->Interactive_Header.receiver_ID   =  Referee_Server;
+	
+	/* 填充 sentry_cmd */
+	Sentry_Auto_Cmd->sentry_cmd.sentry_cmd_data	= (uint32_t)0x00000001;
+	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2);
+	
+	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));
+}
+
 
 /*==============================================================================
               ##### UI基本图形绘制函数 #####
