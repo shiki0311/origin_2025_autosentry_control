@@ -8,7 +8,7 @@
 #include "SolveTrajectory.h"
 
 #define DIAL_SPEED_LOW 4500 // 3000
-#define DIAL_SPEED_HIGH 4900
+#define DIAL_SPEED_HIGH 5400
 
 RC_ctrl_t rc_ctrl_last;
 uint8_t dial_mode_last = 0;

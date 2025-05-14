@@ -17,7 +17,7 @@ void LED_Task(void const * argument)
 		HAL_GPIO_TogglePin(GPIOH,GPIO_PIN_10);
 		vTaskDelay(5);
 
-//		CDC_Transmit_FS((uint8_t *)Referee_Buffer[0],LENTH_REFEREE_BUF);  // 虚拟串口发送某裁判系统数据？ 	
+	
 
 	}
 }

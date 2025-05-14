@@ -211,7 +211,6 @@ void NUC_USBD_Tx(uint8_t cmdid){
 				Referee_Data_Tramsit.coin_remaining_num = Bullet_Remaining.coin_remaining_num;
 				Referee_Data_Tramsit.bullet_remaining_num_17mm = Bullet_Remaining.bullet_remaining_num_17mm;
 				
-			
 				Referee_Data_Tramsit.red_1_HP = Game_Robot_HP.red_1_robot_HP;
 				Referee_Data_Tramsit.red_2_HP = Game_Robot_HP.red_2_robot_HP;
 				Referee_Data_Tramsit.red_3_HP = Game_Robot_HP.red_3_robot_HP;
@@ -231,7 +230,6 @@ void NUC_USBD_Tx(uint8_t cmdid){
 				Referee_Data_Tramsit.rfid_status = RFID_Status.rfid_status;
 				Referee_Data_Tramsit.event_data=Event_Data.event_type;
 				Referee_Data_Tramsit.hurt_reason=Robot_Hurt.hurt_type;
-				Referee_Data_Tramsit.sentry_bullet_already_get=(uint16_t)(Sentry_Info.sentry_info & 0x7FF);
 				memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
 				
 				NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 3); 

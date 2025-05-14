@@ -13,7 +13,7 @@
 #include "Nmanifold_usbd_task.h"
 #include "Vofa_send.h"
 
-#define SHOOT_MOTOR_SPEED_PID_KP 3.0f
+#define SHOOT_MOTOR_SPEED_PID_KP 5.0f
 #define SHOOT_MOTOR_SPEED_PID_KI 0.01f
 #define SHOOT_MOTOR_SPEED_PID_KD 0.0f
 #define SHOOT_MOTOR_SPEED_PID_MAX_OUT 28000.0f
@@ -185,11 +185,11 @@ void Dial_Motor_Control(void)
 
 void Shoot_Power_Control() // ���ݲ���ϵͳ���ص������ж��Ƿ���
 {
-	if (Power_Heat_Data.shooter_17mm_1_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 40)) // ǹ��1��ȴֵ����
+	if (Power_Heat_Data.shooter_17mm_1_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 60)) // ǹ��1��ȴֵ����
 	{
 		flag_cooling_limit[0] = 1;
 	}
-	if (Power_Heat_Data.shooter_17mm_2_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 40))
+	if (Power_Heat_Data.shooter_17mm_2_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 60))
 	{
 		flag_cooling_limit[1] = 1;
 	}

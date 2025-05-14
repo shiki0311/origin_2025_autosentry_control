@@ -18,7 +18,7 @@
 // #define ROTATE_WZ_MAX 25000
 #define ROTATE_WZ_MAX 22000
 #define ROTATE_WZ_MIN -10000
-#define ROTATE_WEAK 0.5f
+#define ROTATE_WEAK 0.3f
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 4450
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO 6498
 #define CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO 2402
@@ -51,30 +51,31 @@
 //  rp->m
 #define M3508_MOTOR_ECD_TO_DISTANCE 0.00000415809748903494517209f
 
-/********************??????????**********************/
-const fp32 toque_coefficient = 1.99688994e-6f; //
-const fp32 k1 = 1.23e-07;					   // k1
-const fp32 k2 = 1.453e-07;					   // k2
+/********************µç»ú¹¦ÂÊ¿ØÖÆ²ÎÊý**********************/
+const fp32 toque_coefficient = 1.99688994e-6f;
+const fp32 k1 = 1.23e-07;  // k1
+const fp32 k2 = 1.453e-07; // k2
 const fp32 constant = 4.081f;
 /*****************************************************/
 
-/*************************Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½Ð»ï¿½ï¿½ï¿½2025ï¿½Ø¹ï¿½ï¿½æ£©****************************/
+/*************************ÖÐµ¯µôÑªÇÐ»»Ð¡ÍÓÂÝÄ£Ê½£¨2025Èü¼¾½ÚÊ¡¹¦ÂÊÌØ¹©°æ£©****************************/
 typedef enum
 {
-	HEALTH_NORMAL,
-	HEALTH_HURT
+	HEALTH_NORMAL, // Õý³£Ä£Ê½
+	HEALTH_HURT	   // ÊÜÉËÐý×ªÄ£Ê½
 } health_state_t;
 
 health_state_t health_state = HEALTH_NORMAL;
 /*****************************************************/
 
-/*************************ï¿½ï¿½ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ¿ï¿½ï¿½Æ£ï¿½power_controlï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½Ý²ï¿½ï¿½?ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½?ï¿½Ä³ï¿½ï¿½ï¿½Ê¹ï¿½Ã³Ì¶È£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ£ï¿??****************************/
+/*************************µ×ÅÌ¹¦ÂÊÉÏÏÞÃ¶¾ÙÌå£¬²»Í¬µÄÖµ¶ÔÓ¦²»Í¬µÄµ×ÅÌ¹¦ÂÊÉÏÏÞ****************************/
 typedef enum
 {
-	REMOTE_CONTROL, // Ò£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+	REMOTE_CONTROL, //
 	NAV_NORMAL_MODE,
 	HURT,
-	UPHILL
+	UPHILL_START,
+	ON_HILL
 } chassis_max_power_control_t;
 
 chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
@@ -109,7 +110,7 @@ static void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int1
 	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
 	if (status != HAL_OK)
 	{
-		// ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Üµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½canï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+		// can·¢ËÍÊ§°ÜËÍÈëcan·¢ËÍ¶ÓÁÐÖÐ
 		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
 	}
 }
@@ -142,7 +143,7 @@ void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
 	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
 	if (status != HAL_OK)
 	{
-		// ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Üµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½canï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+		// can·¢ËÍÊ§°ÜËÍÈëcan·¢ËÍ¶ÓÁÐÖÐ
 		CAN_TxQueue_Push(&cap_tx_message, cap_can_send_data);
 	}
 }
@@ -159,32 +160,30 @@ void Chassis_Motor_Init(void)
 	PID_init(&chassis_control.chassis_follow_gimbal_pid, PID_POSITION, chassis_follow_gimbal_pid, CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT, CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT);
 }
 
-static void Chassis_Max_Power_Update()
+static void Chassis_Max_Power_Update() // ¸ù¾Ý²»Í¬Ä£Ê½Ñ¡Ôñ²»Í¬µ×ÅÌ¹¦ÂÊÉÏÏÞ
 {
+	if (!cap_recieve_flag)
+	{
+		chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+		return;
+	}
 	switch (rc_ctrl.rc.s[1])
 	{
 	case RC_SW_MID:
 		chassis_max_power_control_flag = REMOTE_CONTROL;
 		break;
 	case RC_SW_UP:
-		if (health_state == HEALTH_NORMAL)
-			chassis_max_power_control_flag = NAV_NORMAL_MODE;
+		if (AutoAim_Data_Receive.uphill_flag == 1)
+			chassis_max_power_control_flag = UPHILL_START;
+		else if (AutoAim_Data_Receive.uphill_flag == 2)
+			chassis_max_power_control_flag = ON_HILL;
 		else if (health_state == HEALTH_HURT)
 			chassis_max_power_control_flag = HURT;
+		else if (health_state == HEALTH_NORMAL)
+			chassis_max_power_control_flag = NAV_NORMAL_MODE;
 		break;
 	}
-}
-void power_control()
-{
-	fp32 scaled_give_power[4];
-	fp32 initial_give_power[4];
-	fp32 final_give_power[4];
-
-	init_chassis_power = 0;
-
-	Chassis_Max_Power_Update();
-
-	if (cap_data.cap_per > 0.3f) // ï¿½ï¿½ï¿½ï¿½Ã»Õ¥ï¿½É¾ï¿½ï¿½ï¿½Õ¥Õ¥ ï¿½ï¿½ï¿½ï¿½Ð´Ì«ï¿½Í·ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	if (cap_data.cap_per > 0.3f) // ³¬µç»¹Ã»Õ¥¸É¾ÍÔÙÑ¹Õ¥Ò»ÏÂ
 	{
 		switch (chassis_max_power_control_flag)
 		{
@@ -197,8 +196,11 @@ void power_control()
 		case HURT:
 			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 70;
 			break;
-		case UPHILL:
+		case UPHILL_START:
 			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
+			break;
+		case ON_HILL:
+			chassis_power_limit = Game_Robot_State.chassis_power_limit + 100;
 			break;
 		}
 	}
@@ -206,10 +208,36 @@ void power_control()
 	{
 		chassis_power_limit = Game_Robot_State.chassis_power_limit - (1 - cap_data.cap_per) * 10;
 	}
-	if (!cap_recieve_flag)
+}
+
+static float Nav_Chassis_Rotate_Set() // µ¼º½µ×ÅÌÐý×ªËÙ¶È¿ØÖÆ
+{
+	fp32 nav_wz;
+	
+	if (AutoAim_Data_Receive.uphill_flag == 2)
+		nav_wz = 0;
+
+	 if (health_state == HEALTH_HURT)
 	{
-		chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+		nav_wz = -(float)AutoAim_Data_Receive.rotate;
 	}
+	else
+	{
+		nav_wz = -(float)AutoAim_Data_Receive.rotate * ROTATE_WEAK;
+	}
+	return nav_wz;
+}
+
+void power_control()
+{
+	fp32 scaled_give_power[4];
+	fp32 initial_give_power[4];
+	fp32 final_give_power[4];
+
+	init_chassis_power = 0;
+
+	Chassis_Max_Power_Update();
+
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		initial_give_power[i] = toque_coefficient * chassis_m3508[i].give_current * chassis_m3508[i].speed + k1 * chassis_m3508[i].give_current * chassis_m3508[i].give_current + k2 * chassis_m3508[i].speed * chassis_m3508[i].speed + constant;
@@ -406,8 +434,8 @@ void chassis_vector_set(void)
 	else if (rc_ctrl.rc.s[1] == RC_SW_UP) // automatic mode NUC?????????
 	{
 
-		vx = -ramp_control(vx, (float)AutoAim_Data_Receive.vy * factor[0] * 800, 0.7f);
-		vy = ramp_control(vy, (float)AutoAim_Data_Receive.vx * factor[1] * 800, 0.7f);
+		vx = -ramp_control(vx, (float)AutoAim_Data_Receive.vy * factor[0] * 800, 0.9f);
+		vy = ramp_control(vy, (float)AutoAim_Data_Receive.vx * factor[1] * 800, 0.9f);
 
 		if (AutoAim_Data_Receive.rotate == 0) // ??????????
 		{
@@ -435,16 +463,10 @@ void chassis_vector_set(void)
 			static float rotate_sine_angle = 0;
 			static float rotate_sine_T = 1;
 
+			chassis_control.wz = Nav_Chassis_Rotate_Set();
 			//			rotate_sine_angle+=(0.001/rotate_sine_T*360);
 			//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
-			if (health_state == HEALTH_HURT)
-			{
-				chassis_control.wz = -(float)AutoAim_Data_Receive.rotate;
-			}
-			else
-			{
-				chassis_control.wz = -(float)AutoAim_Data_Receive.rotate * ROTATE_WEAK;
-			}
+
 			chassis_follow_gimbal_zerochange_flag = 1;
 		}
 		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
@@ -510,12 +532,12 @@ void Chassis_Task(void const *argument)
 		}
 
 		//				if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP)) //
+		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
+		power_control();
 		if (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE))
 			CAN_Chassis_CMD(0, 0, 0, 0);
 		else
 		{
-			CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
-			power_control();
 			//				chassis_feedback_update();
 			CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
 		}

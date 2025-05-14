@@ -38,7 +38,7 @@
 
 #define LENGTH_CHASSIS_GIMBAL_ANGLE 4     //���͵��������̨�Ƕȣ���->�ϣ����ڱ�ר�ã�
 #define LENGTH_CHASSIS_DATA_TX    24      //�ϴ��������ټ����ݣ���->�ϣ����ڱ�ר�ã�
-#define LENGTH_REFEREE_DATA_TX		50			//���;�����Ҫ������ ���ڱ�ר�ã�
+#define LENGTH_REFEREE_DATA_TX		48			//���;�����Ҫ������ ���ڱ�ר�ã�
 //#define LENGTH_move_cmd_DATA_RX    20      //���������������ݣ���->�£����ڱ�ר�ã� û�õ�
 #define LENGTH_NUC_DATA_RX		69		//	���������������ݣ���->�£����ڱ�ר�ã� ��nuc���ݴ�����£����������飩
 
@@ -130,7 +130,6 @@ typedef struct{
 	uint32_t rfid_status;					//rfidɨ������
 	uint32_t event_data;
 	uint8_t  hurt_reason;
-	uint16_t sentry_bullet_already_get;
 	
 }__attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
@@ -149,7 +148,8 @@ typedef struct{
 	
 	float rotate;
 	float yaw_speed;
-	float pitch_speed;	
+	float pitch_speed;
+	bool_t uphill_flag;
 }__attribute__((__packed__)) AutoAim_Data_Rx;//��������
 
 /*******************************************END**********************************************/

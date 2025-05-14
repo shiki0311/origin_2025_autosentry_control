@@ -18,8 +18,8 @@
 #define ANGLE_TO_RAD 0.01745f
 #define RAD_TO_ANGLE 57.295779f
 
-#define PITCH_ECD_ANGLE_MAX 27500 // 27800
-#define PITCH_ECD_ANGLE_MIN 24850 // 25000
+#define PITCH_ECD_ANGLE_MAX 27280 // 27800
+#define PITCH_ECD_ANGLE_MIN 24700 // 25000
 
 // yaw,pitch前馈系数
 #define YAW_MOTOR_AUTO_AIM_FF 2.5f
@@ -280,7 +280,7 @@ float Pitch_Updown(void)
     static uint8_t updown_switch_flag = 0;
     uint8_t speed_state = AutoAim_Data_Receive.pitch_speed ? 1 : 0;
 
-    const PitchSwingParams swing_params[2] = {{-20.0f, -3.0f, 0.08f}, {3.0f, 24.0f, 0.1f}}; // 两种pitch swing的角度，分别对应打前哨和正常打人
+    const PitchSwingParams swing_params[2] = {{-21.0f, -15.0f, 0.08f}, {3.0f, 20.0f, 0.05f}}; // 两种pitch swing的角度，分别对应打前哨和正常打人
 
     if (updown_switch_flag == 0)
     {
