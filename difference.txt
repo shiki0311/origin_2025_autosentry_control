@@ -1,0 +1,8 @@
+Chassis_Task.c
+#define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 2048
+
+Switch_Task.c
+#define DIAL_SPEED_LOW  1800
+#define DIAL_SPEED_HIGH 3200
+
+电容功率控制
