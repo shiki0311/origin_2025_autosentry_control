@@ -5,14 +5,12 @@
 #include "remote_control.h"
 #include "referee.h"
 #include "Nmanifold_usbd_task.h"
-#include "SolveTrajectory.h"
 
 #define DIAL_SPEED_LOW 4500 // 3000
 #define DIAL_SPEED_HIGH 5000
 
 RC_ctrl_t rc_ctrl_last;
 uint8_t dial_mode_last = 0;
-
 
 void Switch_Task(void const *argument)
 {
@@ -47,7 +45,7 @@ void Switch_Task(void const *argument)
 				else
 					dial_speed = 0;
 			}
-			else // 单发模式
+			else //
 			{
 				static uint8_t autoaim_shoot_freq = 0;
 				if ((!(rc_ctrl_last.rc.s[0] == RC_SW_MID) && (rc_ctrl.rc.s[0] == RC_SW_MID)) || (!(rc_ctrl_last.rc.s[0] == RC_SW_UP) && (rc_ctrl.rc.s[0] == RC_SW_UP)))

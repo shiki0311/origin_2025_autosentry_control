@@ -1,3 +1,10 @@
+/****************************************************************
+ * @file: 	Chassis_Task.c
+ * @author: Shiki
+ * @date:	2025.6.18
+ * @brief:	哨兵底盘任务
+ * @attention:
+ ******************************************************************/
 #include "Chassis_Task.h"
 #include "Gimbal_Task.h"
 #include "FreeRTOS.h"
@@ -10,6 +17,7 @@
 #include "bsp_cap.h"
 #include "Nmanifold_usbd_task.h"
 #include "detect_task.h"
+#include "user_common_lib.h"
 
 #define NORMAL_VX_MAX 4000
 #define NORMAL_VY_MAX 4000
@@ -40,15 +48,16 @@
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT 20000.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT 1500.0f
 
+#define ROTATE_MOVE_FF 0.012f // 小陀螺模式下的
+
 #define CHASSIS_POWER_PID_KP 0.03f
 #define CHASSIS_POWER_PID_KI 0.00f
 #define CHASSIS_POWER_PID_KD 0.0f
 #define CHASSIS_POWER_PID_MAX_OUT 1.0f
 #define CHASSIS_POWER_PID_MAX_IOUT 1000.0f
 
-#define NAV_SPEED_FAST 800.0f  //导航发过来的速度乘以的系数，非上坡用
-#define NAV_SPEED_SLOW 400.0f  //导航发过来的速度乘以的系数，非上坡用
-
+#define NAV_SPEED_FAST 800.0f // 导航发过来的速度乘以的系数，非上坡用
+#define NAV_SPEED_SLOW 400.0f // 导航发过来的速度乘以的系数，非上坡用
 
 //  rp/m->m/s
 #define M3508_MOTOR_RPM_TO_VECTOR 0.03547934768011173503001388518321f
@@ -62,97 +71,19 @@ const fp32 k2 = 1.453e-07; // k2
 const fp32 constant = 4.081f;
 /*****************************************************/
 
-/*************************中弹掉血切换小陀螺模式（2025赛季节省功率特供版）****************************/
-typedef enum
-{
-	HEALTH_NORMAL, // 正常模式
-	HEALTH_HURT	   // 受伤旋转模式
-} health_state_t;
-
+/************************全局变量及常量区*****************************/
+chassis_command_t chassis_commands[] = {{FOLLOW_GIMBAL, chassis_follow_gimbal_handler}, {ROTATE, chassis_rotate_handler}, {SAFE, chassis_safe_handler}}; // 初始化底盘控制命令数组
 health_state_t health_state = HEALTH_NORMAL;
-/*****************************************************/
-
-/*************************底盘功率上限枚举体，不同的值对应不同的底盘功率上限****************************/
-typedef enum
-{
-	REMOTE_CONTROL, //
-	NAV_NORMAL_MODE,
-	HURT,
-	UPHILL_START,
-	ON_HILL
-} chassis_max_power_control_t;
-
 chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
-/*****************************************************/
 chassis_motor_t chassis_m3508[4] = {0};
 chassis_control_t chassis_control;
-uint8_t chassis_follow_gimbal_zerochange_flag = 0;
-fp32 chassis_follow_gimbal_zero_actual = CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
+bool_t chassis_follow_gimbal_zerochange = FALSE;
 fp32 chassis_power_limit = 0, chassis_power_buffer = 0;
 fp32 init_chassis_power = 0.0;
 const fp32 factor[3] = {1.54, 1.54, 1.54};
+/*************************************************************/
 
-static void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-16384,+16384
-{
-	CAN_TxHeaderTypeDef chassis_tx_message;
-	uint8_t chassis_can_send_data[8];
-	uint32_t send_mail_box;
-	chassis_tx_message.StdId = CAN_CHASSIS_ALL_ID;
-	chassis_tx_message.IDE = CAN_ID_STD;
-	chassis_tx_message.RTR = CAN_RTR_DATA;
-	chassis_tx_message.DLC = 0x08;
-	chassis_can_send_data[0] = motor1 >> 8;
-	chassis_can_send_data[1] = motor1;
-	chassis_can_send_data[2] = motor2 >> 8;
-	chassis_can_send_data[3] = motor2;
-	chassis_can_send_data[4] = motor3 >> 8;
-	chassis_can_send_data[5] = motor3;
-	chassis_can_send_data[6] = motor4 >> 8;
-	chassis_can_send_data[7] = motor4;
-
-	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
-	if (status != HAL_OK)
-	{
-		// can发送失败送入can发送队列中
-		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
-	}
-}
-void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
-{
-	CAN_TxHeaderTypeDef cap_tx_message;
-	uint8_t cap_can_send_data[8];
-	uint32_t send_mail_box;
-	cap_tx_message.StdId = CAN_CAP_TX_ID;
-	cap_tx_message.IDE = CAN_ID_STD;
-	cap_tx_message.RTR = CAN_RTR_DATA;
-	cap_tx_message.DLC = 0x08;
-
-	uint16_t temp;
-
-	temp = data1 * 100;
-	cap_can_send_data[0] = temp;
-	cap_can_send_data[1] = temp >> 8;
-	temp = data2 * 100;
-	cap_can_send_data[2] = temp;
-	cap_can_send_data[3] = temp >> 8;
-	temp = data3 * 100;
-	cap_can_send_data[4] = temp;
-	cap_can_send_data[5] = temp >> 8;
-	temp = data4 * 100;
-	cap_can_send_data[6] = temp;
-	cap_can_send_data[7] = temp >> 8;
-
-	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
-	if (status != HAL_OK)
-	{
-		// can发送失败送入can发送队列中
-		CAN_TxQueue_Push(&cap_tx_message, cap_can_send_data);
-	}
-}
-
-void Chassis_Motor_Init(void)
+static void Chassis_Motor_Init(void)
 {
 	const static fp32 motor_speed_pid[3] = {M3505_MOTOR_SPEED_PID_KP, M3505_MOTOR_SPEED_PID_KI, M3505_MOTOR_SPEED_PID_KD};
 	const static fp32 chassis_follow_gimbal_pid[3] = {CHASSIS_FOLLOW_GIMBAL_PID_KP, CHASSIS_FOLLOW_GIMBAL_PID_KI, CHASSIS_FOLLOW_GIMBAL_PID_KD};
@@ -164,13 +95,28 @@ void Chassis_Motor_Init(void)
 	PID_init(&chassis_control.chassis_follow_gimbal_pid, PID_POSITION, chassis_follow_gimbal_pid, CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT, CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT);
 }
 
-static void Chassis_Max_Power_Update() // 根据不同模式选择不同底盘功率上限
+static void Chassis_Motor_Data_Update(void)
+{
+	static float lpf_ratio = 0.0f; // 一阶低通滤波参数，越大响应越滞后
+	static fp32 chassis_m3508_last_speed[4];
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		chassis_m3508[i].speed = motor_measure_chassis[i].speed_rpm;
+
+		chassis_m3508[i].speed = (chassis_m3508[i].speed) * (1 - lpf_ratio) + chassis_m3508_last_speed[i] * lpf_ratio;
+		chassis_m3508_last_speed[i] = motor_measure_chassis[i].speed_rpm;
+	}
+	//	chassis_power_limit=Game_Robot_State.chassis_power_limit; //
+	chassis_power_buffer = Power_Heat_Data.buffer_energy; //
+}
+static void Chassis_Max_Power_Update(void) // 根据不同模式选择不同底盘功率上限
 {
 	if (!cap_recieve_flag)
 	{
 		chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
 		return;
 	}
+	// todo
 	switch (rc_ctrl.rc.s[1])
 	{
 	case RC_SW_MID:
@@ -214,22 +160,65 @@ static void Chassis_Max_Power_Update() // 根据不同模式选择不同底盘功率上限
 	}
 }
 
-static float Nav_Chassis_Rotate_Set() // 导航底盘旋转速度控制
+static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
 {
-	fp32 nav_wz;
-	
-	if (AutoAim_Data_Receive.uphill_flag == 2)
-		nav_wz = 0;
+	chassis_mode_t chassis_mode = SAFE;
 
-	else if (health_state == HEALTH_HURT)
+	bool_t rc_ctrl_follow_gimbal = ((rc_ctrl.rc.s[1] == RC_SW_MID) && (rc_ctrl.rc.ch[4] < 500) && (rc_ctrl.rc.ch[4] > -500)); // 是否满足遥控器控制时底盘跟随云台模式，下面以此类推
+	bool_t rc_ctrl_rotate = ((rc_ctrl.rc.s[1] == RC_SW_MID) && !rc_ctrl_follow_gimbal);
+	bool_t rc_ctrl_safe = ((rc_ctrl.rc.s[1] == RC_SW_DOWN) || toe_is_error(DBUS_TOE));
+	bool_t nav_follow_gimbal = ((AutoAim_Data_Receive.rotate == 0) && (rc_ctrl.rc.s[1] == RC_SW_UP)); // 是否满足导航模式下底盘跟随云台模式，下面以此类推
+	bool_t nav_rotate = ((AutoAim_Data_Receive.rotate != 0) && (rc_ctrl.rc.s[1] == RC_SW_UP));
+	bool_t nav_safe = ((Game_Status.game_progress != 4) && (rc_ctrl.rc.s[1] == RC_SW_UP));
+
+	if (rc_ctrl_safe || nav_safe)
 	{
-		nav_wz = -(float)AutoAim_Data_Receive.rotate;
+		chassis_mode = SAFE; // 失能模式的优先级最高，需要优先判断
 	}
-	else
+	else if (rc_ctrl_rotate || nav_rotate)
 	{
-		nav_wz = -(float)AutoAim_Data_Receive.rotate * ROTATE_WEAK;
+		chassis_mode = ROTATE;
 	}
-	return nav_wz;
+	else if (rc_ctrl_follow_gimbal || nav_follow_gimbal)
+	{
+		chassis_mode = FOLLOW_GIMBAL;
+	}
+
+	*mode = chassis_mode;
+	return *mode;
+}
+
+static void Health_Monitor_Update(void)
+{
+	if (rc_ctrl.rc.s[1] != RC_SW_UP)
+		return;
+
+	static uint32_t hurt_start_time = 0;
+	static uint16_t last_health = 0;
+	uint16_t current_health = Game_Robot_State.current_HP; // ?????????
+
+	switch (health_state)
+	{
+	case HEALTH_NORMAL:
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ????????蹥??
+		{
+			health_state = HEALTH_HURT;
+			hurt_start_time = xTaskGetTickCount();
+		}
+		break;
+
+	case HEALTH_HURT:
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ??????????
+		{
+			hurt_start_time = xTaskGetTickCount();
+		}
+		else if (xTaskGetTickCount() - hurt_start_time > pdMS_TO_TICKS(3000))
+		{
+			health_state = HEALTH_NORMAL;
+		}
+		break;
+	}
+	last_health = current_health;
 }
 
 void power_control()
@@ -239,8 +228,6 @@ void power_control()
 	fp32 final_give_power[4];
 
 	init_chassis_power = 0;
-
-	Chassis_Max_Power_Update();
 
 	for (uint8_t i = 0; i < 4; i++)
 	{
@@ -287,79 +274,35 @@ void power_control()
 	}
 }
 
-void Chassis_Motor_Data_Update(void)
+static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 vy_set, const fp32 wz_set, fp32 *wheel0, fp32 *wheel1, fp32 *wheel2, fp32 *wheel3, chassis_mode_t mode)
 {
-	static float lpf_ratio = 0.0f;
-	static fp32 chassis_m3508_last_speed[4];
-	for (uint8_t i = 0; i < 4; i++)
+	if (wheel0 == NULL || wheel1 == NULL || wheel2 == NULL || wheel3 == NULL || mode == SAFE)
 	{
-		chassis_m3508[i].speed = motor_measure_chassis[i].speed_rpm;
-
-		chassis_m3508[i].speed = (chassis_m3508[i].speed) * (1 - lpf_ratio) + chassis_m3508_last_speed[i] * lpf_ratio;
-		chassis_m3508_last_speed[i] = motor_measure_chassis[i].speed_rpm;
+		return;
 	}
-	//	chassis_power_limit=Game_Robot_State.chassis_power_limit; //
-	chassis_power_buffer = Power_Heat_Data.buffer_energy; //
-}
-
-static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 vy_set, const fp32 wz_set, fp32 *wheel0, fp32 *wheel1, fp32 *wheel2, fp32 *wheel3)
-{
 	*wheel0 = (+vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 	*wheel1 = (+vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 	*wheel2 = (-vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 	*wheel3 = (-vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 }
-
-void Health_Monitor_Update(void)
+/**
+ * @brief  设置底盘四个3508电机的电流
+ */
+static void chassis_motor_current_set(chassis_mode_t mode)
 {
-	if (rc_ctrl.rc.s[1] != RC_SW_UP)
+	if (mode == SAFE)
 		return;
-
-	static uint32_t hurt_start_time = 0;
-	static uint16_t last_health = 0;
-	uint16_t current_health = Game_Robot_State.current_HP; // ?????????
-
-	switch (health_state)
+	for (uint8_t i = 0; i < 4; i++)
 	{
-	case HEALTH_NORMAL:
-		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ????????蹥??
-		{
-			health_state = HEALTH_HURT;
-			hurt_start_time = xTaskGetTickCount();
-		}
-		break;
-
-	case HEALTH_HURT:
-		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ??????????
-		{
-			hurt_start_time = xTaskGetTickCount();
-		}
-		else if (xTaskGetTickCount() - hurt_start_time > pdMS_TO_TICKS(3000))
-		{
-			health_state = HEALTH_NORMAL;
-		}
-		break;
+		PID_calc(&chassis_m3508[i].pid, chassis_m3508[i].speed, chassis_m3508[i].speed_set);
+		chassis_m3508[i].give_current = chassis_m3508[i].pid.out;
 	}
-	last_health = current_health;
 }
 
-float Limit_To_180(float in)
-{
-	while (in < -180 || in > 180)
-	{					   // ?????????????????????[-??,??]????
-		if (in < -180)	   // ?????????锟斤拷??-??
-			in = in + 360; // ????2??
-		else if (in > 180) // ?????????????
-			in = in - 360; // ??锟斤拷2??
-	}
-	return in;
-}
-
-fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle, fp32 Target_Speed)
+fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle)
 {
 	float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f); // ?????????????????????[-??,??]????
 
-	// ????????锟斤拷???????
 	if (angle_front_err > 135 || angle_front_err <= -135)
 		return CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
 	if (angle_front_err > 45 && angle_front_err <= 135)
@@ -370,115 +313,127 @@ fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle, fp32 Target_Speed)
 		return CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO;
 }
 
-void chassis_vector_set(void)
+/**
+ * @brief  以yaw轴朝向作为正方向设置底盘xy轴速度，在小陀螺模式和跟随云台模式下通用
+ */
+void Set_Chassis_VxVy(fp32 yaw_nearest_zero_rad, fp32 *chassis_vx, fp32 *chassis_vy)
 {
-	static fp32 vx, vy;
-	fp32 sin_yaw = 0.0f, cos_yaw = 0.0f;
-
-	if (rc_ctrl.rc.s[1] == RC_SW_DOWN) // stop
+	fp32 vx, vy;
+	fp32 sin_yaw = arm_sin_f32(yaw_nearest_zero_rad);
+	fp32 cos_yaw = arm_cos_f32(yaw_nearest_zero_rad);
+	// todo
+	if ((rc_ctrl.rc.s[1] == RC_SW_MID) && (rc_ctrl.rc.ch[4] < 500) && (rc_ctrl.rc.ch[4] > -500)) // 遥控器控制模式
 	{
-		chassis_follow_gimbal_zerochange_flag = 1; // ??????0 ?????????锟斤拷???????? ??????????????????????
-	}
-	else if ((rc_ctrl.rc.s[1] == RC_SW_MID) && rc_ctrl.rc.ch[4] < 500 && rc_ctrl.rc.ch[4] > -500) // normal move
-	{
-		if (chassis_follow_gimbal_zerochange_flag == 1)
-		{
-			// ?????? ??????yaw??????????
-			chassis_follow_gimbal_zero_actual = Angle_Z_Suit_ZERO_Get(gimbal_m6020[0].ENC_angle, gimbal_m6020[0].ENC_speed); // ?????????锟斤拷?
-			chassis_follow_gimbal_zerochange_flag = 0;
-		}
-		chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
-		//      chassis_control.chassis_follow_gimbal_angle=(Angle_Z_Suit_Err_Get((float)(gimbal_m6020[0].ENC_angle)/8192.0f*360,gimbal_m6020[0].ENC_speed))/(2*PI)*360;
-		if (chassis_control.chassis_follow_gimbal_angle > 180)
-		{
-			chassis_control.chassis_follow_gimbal_angle -= 360;
-		}
-		PID_calc(&chassis_control.chassis_follow_gimbal_pid, chassis_control.chassis_follow_gimbal_angle, 0);
-		chassis_control.wz = -chassis_control.chassis_follow_gimbal_pid.out;
-
-		fp32 sin_yaw_rad;
-
 		vx = ramp_control(vx, rc_ctrl.rc.ch[2] * 9, 0.7f);
 		vy = ramp_control(vy, rc_ctrl.rc.ch[3] * 9, 0.7f);
-
-		sin_yaw_rad = -(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f;
-		sin_yaw = arm_sin_f32(sin_yaw_rad);
-		cos_yaw = arm_cos_f32(sin_yaw_rad);
-		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
 	}
-	else if (rc_ctrl.rc.s[1] == RC_SW_MID) // rotate mode
+	else // 进入Set_FollowGimbal_VxVy函数时不是遥控器控制模式就是导航模式，所以不用再判断一次是否为导航模式
 	{
-		// ????????????????chassis_follow_gimbal_angle
-		chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.012) % 8192) / 8192.0f * 360.0f;
-		if (chassis_control.chassis_follow_gimbal_angle > 180)
-		{
-			chassis_control.chassis_follow_gimbal_angle -= 360;
-		}
-
-		vx = ramp_control(vx, rc_ctrl.rc.ch[2] * 9, 0.7f);
-		vy = ramp_control(vy, rc_ctrl.rc.ch[3] * 9, 0.7f);
-
-		sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-		cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
-
-		if (rc_ctrl.rc.ch[4] <= -500)
-		{
-			chassis_control.wz = ROTATE_WZ_MAX;
-		}
-		else if (rc_ctrl.rc.ch[4] >= 500)
-		{
-			chassis_control.wz = ROTATE_WZ_MIN;
-		}
-
-		chassis_follow_gimbal_zerochange_flag = 1; // ???? ???锟斤拷?????锟斤拷??????????????????
-	}
-	else if (rc_ctrl.rc.s[1] == RC_SW_UP) // automatic mode NUC?????????
-	{
-//		if(AutoAim_Data_Receive.uphill_flag == 2)
-//		{
-//		vx = -ramp_control(vx, (float)AutoAim_Data_Receive.vy * factor[0] * NAV_SPEED_SLOW, 0.3f);
-//		vy = ramp_control(vy, (float)AutoAim_Data_Receive.vx * factor[1] * NAV_SPEED_SLOW, 0.3f);
-//		}
 		vx = -ramp_control(vx, (float)AutoAim_Data_Receive.vy * factor[0] * NAV_SPEED_FAST, 0.9f);
 		vy = ramp_control(vy, (float)AutoAim_Data_Receive.vx * factor[1] * NAV_SPEED_FAST, 0.9f);
+	}
+	*chassis_vx = cos_yaw * vx + sin_yaw * vy;
+	*chassis_vy = -sin_yaw * vx + cos_yaw * vy;
+}
 
-		if (AutoAim_Data_Receive.rotate == 0) // ??????????
+/**
+ * @brief  设置底盘跟随云台时的底盘角速度，只在chassis_follow_gimbal_handler中调用
+ */
+fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
+{
+	PID_calc(&chassis_control.chassis_follow_gimbal_pid, follow_gimbal_angle, 0);
+	*wz = -chassis_control.chassis_follow_gimbal_pid.out;
+	return *wz;
+}
+
+/**
+ * @brief  设置小陀螺时的底盘角速度，只在rotate_handler中调用
+ */
+fp32 Set_Rotate_Wz(fp32 *wz)
+{
+	// todo
+	if (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.ch[4] <= -500)
+		*wz = ROTATE_WZ_MAX;
+	else if (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.ch[4] >= 500)
+		*wz = ROTATE_WZ_MIN;
+	else // 导航模式下的小陀螺角速度设置
+	{
+		if (AutoAim_Data_Receive.uphill_flag == 2)
+			*wz = 0;
+
+		else if (health_state == HEALTH_HURT)
 		{
-			chassis_control.chassis_follow_gimbal_angle = (float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f;
-			if (chassis_control.chassis_follow_gimbal_angle > 180.0f)
-			{
-				chassis_control.chassis_follow_gimbal_angle -= 360.0f;
-			}
-			PID_calc(&chassis_control.chassis_follow_gimbal_pid, chassis_control.chassis_follow_gimbal_angle, 0);
-			chassis_control.wz = -chassis_control.chassis_follow_gimbal_pid.out;
-
-			sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
-			cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f);
+			*wz = -(float)AutoAim_Data_Receive.rotate;
 		}
-		else // 锟斤拷????
+		else
 		{
-			chassis_control.chassis_follow_gimbal_angle = (float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * 0.01) % 8192) / 8192.0f * 360.0f;
-			if (chassis_control.chassis_follow_gimbal_angle > 180)
-			{
-				chassis_control.chassis_follow_gimbal_angle -= 360;
-			}
-			sin_yaw = arm_sin_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-			cos_yaw = arm_cos_f32(-(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f);
-
-			static float rotate_sine_angle = 0;
-			static float rotate_sine_T = 1;
-
-			chassis_control.wz = Nav_Chassis_Rotate_Set();
-			//			rotate_sine_angle+=(0.001/rotate_sine_T*360);
-			//			rotate_sine_angle=Limit_To_180(rotate_sine_angle);
-
-			chassis_follow_gimbal_zerochange_flag = 1;
+			*wz = -(float)AutoAim_Data_Receive.rotate * ROTATE_WEAK;
 		}
-		chassis_control.vx = cos_yaw * vx + sin_yaw * vy;
-		chassis_control.vy = -sin_yaw * vx + cos_yaw * vy;
+	}
+	return *wz;
+}
+
+/**
+ * @brief  跟随云台模式下的控制函数，在控制函数中解算出以yaw轴朝向为正方向的机器人x y轴速度和角速度wz
+ */
+void chassis_follow_gimbal_handler(void)
+{
+	static fp32 chassis_follow_gimbal_zero_actual = CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
+
+	if (chassis_follow_gimbal_zerochange == TRUE)
+	{
+		chassis_follow_gimbal_zero_actual = Angle_Z_Suit_ZERO_Get(gimbal_m6020[0].ENC_angle);
+		chassis_follow_gimbal_zerochange = FALSE;
+	}
+	chassis_control.chassis_follow_gimbal_angle = Limit_To_180((float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f);
+	fp32 chassis_yaw_nearest_zero_rad = -(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f;
+
+	Set_FollowGimbal_Wz(chassis_control.chassis_follow_gimbal_angle, &chassis_control.wz);
+	Set_Chassis_VxVy(chassis_yaw_nearest_zero_rad, &chassis_control.vx, &chassis_control.vy);
+}
+
+/**
+ * @brief  小陀螺模式下的控制函数，在控制函数中解算出以yaw轴朝向为正方向的机器人x y轴速度和角速度wz
+ */
+void chassis_rotate_handler(void)
+{
+	chassis_follow_gimbal_zerochange = TRUE; // 进入小陀螺模式当前底盘零点会切换
+
+	chassis_control.chassis_follow_gimbal_angle = Limit_To_180((float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * ROTATE_MOVE_FF) % 8192) / 8192.0f * 360.0f);
+	fp32 rotate_yaw_rad = -(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f; // 小陀螺模式下当前零点距离yaw轴的弧度差
+
+	Set_Rotate_Wz(&chassis_control.wz);
+	Set_Chassis_VxVy(rotate_yaw_rad, &chassis_control.vx, &chassis_control.vy);
+}
+
+/**
+ * @brief  失能模式下的控制函数，对底盘电机电流置零
+ */
+void chassis_safe_handler(void)
+{
+	chassis_follow_gimbal_zerochange = TRUE; // 进入失能模式当前底盘零点可能会切换，模式切换到底盘跟随云台后需要重新寻找零点
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		chassis_m3508[i].give_current = 0;
+	}
+}
+
+/**
+ * @brief  根据不同底盘模式执行对应底盘控制函数，给以yaw轴朝向为正方向的机器人x y轴速度和wz轴速度赋值
+ *         注意：1.在小陀螺模式和底盘跟随模式下，xy轴的速度解算逻辑相同，角速度解算逻辑不同
+ * 				 2.失能模式下，直接对底盘电机电流值赋0，在task的while(1)中后续调用chassis_motor_current_set函数和chassis_vector_to_mecanum_wheel_speed函数时会直接返回
+ *         综上：在小陀螺模式和底盘跟随模式下xy轴速度解算调用同一函数 Set_Chassis_VxVy（），角速度解算调用不同函数
+ */
+void chassis_vector_set(chassis_mode_t mode)
+{
+	int size = sizeof(chassis_commands) / sizeof(chassis_command_t);
+	for (int i = 0; i < size; i++)
+	{
+		if (chassis_commands[i].mode == mode)
+		{
+			chassis_commands[i].handler();
+			return;
+		}
 	}
 }
 
@@ -490,66 +445,30 @@ void chassis_feedback_update(void)
 	Chassis_Data_Tramsit.wz = (-chassis_m3508[0].speed - chassis_m3508[1].speed - chassis_m3508[2].speed - chassis_m3508[3].speed) * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
 }
 
-/**
- * @brief  ???锟斤拷???
- * @param  ???????趨???????
- * @retval ????
- */
-float ramp_control(float ref, float set, float accel)
-{
-	fp32 ramp = limit(accel, 0, 1) * (set - ref);
-	return ref + ramp;
-}
-
-/**
- * @brief  ?????锟斤拷????
- * @param  ????????,??锟斤拷?,????
- * @retval ???????
- */
-fp32 limit(float data, float min, float max)
-{
-	if (data >= max)
-		return max;
-	if (data <= min)
-		return min;
-	return data;
-}
-
 void Chassis_Task(void const *argument)
 {
 	Chassis_Motor_Init();
 
 	vTaskDelay(200);
 
+	static chassis_mode_t chassis_mode;
 	while (1)
 	{
+		chassis_mode = Chassis_Mode_Update(&chassis_mode);
 		Chassis_Motor_Data_Update();
-
+		Chassis_Max_Power_Update();
 		Health_Monitor_Update();
 
-		chassis_vector_set();
+		chassis_vector_set(chassis_mode);
 
-		chassis_vector_to_mecanum_wheel_speed(chassis_control.vx, chassis_control.vy, chassis_control.wz, &chassis_m3508[0].speed_set, &chassis_m3508[1].speed_set, &chassis_m3508[2].speed_set, &chassis_m3508[3].speed_set);
+		chassis_vector_to_mecanum_wheel_speed(chassis_control.vx, chassis_control.vy, chassis_control.wz, &chassis_m3508[0].speed_set, &chassis_m3508[1].speed_set, &chassis_m3508[2].speed_set, &chassis_m3508[3].speed_set, chassis_mode);
 
-		for (uint8_t i = 0; i < 4; i++)
-		{
-
-			PID_calc(&chassis_m3508[i].pid, chassis_m3508[i].speed, chassis_m3508[i].speed_set);
-
-			chassis_m3508[i].give_current = chassis_m3508[i].pid.out;
-		}
-
-	 
+		chassis_motor_current_set(chassis_mode);
 		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
 		power_control();
-//		if (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE))
-		if(rc_ctrl.rc.s[1]==RC_SW_DOWN||toe_is_error(DBUS_TOE)||(Game_Status.game_progress!=4 && rc_ctrl.rc.s[1]==RC_SW_UP))
-			CAN_Chassis_CMD(0, 0, 0, 0);
-		else
-		{
-			//				chassis_feedback_update();
-			CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
-		}
+
+		CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
+
 		vTaskDelay(2);
 	}
 }

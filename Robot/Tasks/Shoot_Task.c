@@ -63,27 +63,6 @@ void Shoot_Motor_Init(void)
 	PID_init(&shoot_motor_3508[1].speed_pid, PID_POSITION, shoot_motor_3508_speed_pid2, SHOOT_MOTOR_SPEED_PID_MAX_OUT, SHOOT_MOTOR_SPEED_PID_MAX_IOUT);
 }
 
-void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
-{
-	CAN_TxHeaderTypeDef shoot_tx_message;
-	uint8_t shoot_can_send_data[8];
-	uint32_t send_mail_box;
-	shoot_tx_message.StdId = CAN_SHOOT_ALL_ID;
-	shoot_tx_message.IDE = CAN_ID_STD;
-	shoot_tx_message.RTR = CAN_RTR_DATA;
-	shoot_tx_message.DLC = 0x08;
-	shoot_can_send_data[0] = motor1 >> 8;
-	shoot_can_send_data[1] = motor1;
-	shoot_can_send_data[2] = motor2 >> 8;
-	shoot_can_send_data[3] = motor2;
-	shoot_can_send_data[4] = motor3 >> 8;
-	shoot_can_send_data[5] = motor3;
-	shoot_can_send_data[6] = motor4 >> 8;
-	shoot_can_send_data[7] = motor4;
-
-	HAL_CAN_AddTxMessage(&SHOOT_CAN, &shoot_tx_message, shoot_can_send_data, &send_mail_box);
-}
-
 void Shoot_Motor_Data_Update(void) // ֻ�õ���shoot_m2006[0]
 {
 	shoot_m2006[0].speed = motor_measure_shoot[2].speed_rpm;
@@ -106,12 +85,12 @@ void Fric_Motor_Control(void)
 		shoot_motor_3508[0].speed_set = target_rpm_define;
 		shoot_motor_3508[1].speed_set = -target_rpm_define;
 
-		if ((shoot_motor_3508[0].speed > target_rpm_define-200) && (shoot_motor_3508[1].speed < -target_rpm_define+200))
+		if ((shoot_motor_3508[0].speed > target_rpm_define - 200) && (shoot_motor_3508[1].speed < -target_rpm_define + 200))
 		{
 			shoot_flag = 1;
 		}
 	}
-	if (fric_state == 0)
+	else if (fric_state == 0)
 	{
 		shoot_motor_3508[0].speed_set = 0;
 		shoot_motor_3508[1].speed_set = 0;

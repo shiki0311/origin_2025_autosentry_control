@@ -1,10 +1,18 @@
+/*
+ * @file:
+ * @author:
+ * @date:
+ * @brief:
+ * @attention:
+ */
 #include "bsp_can.h"
+#include "bsp_cap.h"
 #include "main.h"
 #include "Chassis_Task.h"
 #include "Gimbal_Task.h"
 #include "Shoot_Task.h"
 #include "detect_task.h"
-
+#include "user_common_lib.h"
 
 #define P_MIN -3.1415926f
 #define P_MAX 3.1415926f
@@ -34,7 +42,6 @@ motor_measure_t motor_measure_shoot[3];
 DM_motor_data_t DM_pitch_motor_data = {0};
 CanTxQueueTypeDef can_tx_queue;
 uint32_t id = 0;
-bool_t flag_code[5] = {1, 1, 1, 1, 1};
 int32_t dial_angle = 0;
 CAN_RxHeaderTypeDef rx_header;
 CAN_RxHeaderTypeDef rx_header2;
@@ -80,20 +87,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		{
 			static uint8_t i = 0;
 			i = rx_header.StdId - CAN_3508_M1_ID;
-
 			get_motor_measure(&motor_measure_chassis[i], rx_data);
-
 			int16_t temp1 = motor_measure_chassis[i].ecd - motor_measure_chassis[i].last_ecd;
-
 			int16_t temp2 = temp1 + (temp1 < 0 ? 8192 : -8192);
-
 			motor_measure_chassis[i].code += abs(temp2) < abs(temp1) ? temp2 : temp1;
-
-			if (flag_code[i] == 0)
-			{
-				motor_measure_chassis[i].code = 0;
-				flag_code[i] = 1;
-			}
 			detect_hook(CHASSIS_MOTOR1_TOE + i);
 
 			break;
@@ -210,16 +207,15 @@ void Process_TxQueue(CAN_HandleTypeDef *hcan)
 	CAN_TxHeaderTypeDef tx_header;
 	uint8_t tx_data[8];
 	uint32_t send_mail_box;
-	// Â∞ùËØïÂèëÈÄÅÈòüÂàó‰∏≠ÁöÑÊ∂àÊÅØ
+	// ≥¢ ‘∑¢ÀÕ∂”¡–÷–µƒœ˚œ¢
 	while (HAL_CAN_GetTxMailboxesFreeLevel(hcan) > 0)
 	{
 		if (CAN_TxQueue_Pop(&tx_header, tx_data) == 0)
 		{
 			HAL_CAN_AddTxMessage(hcan, &tx_header, tx_data, &send_mail_box);
-		}else
-		{
-			break;
 		}
+		else
+			break;
 	}
 }
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
@@ -240,16 +236,111 @@ void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 		Process_TxQueue(hcan);
 }
 
-float uint_to_float(int x_int, float x_min, float x_max, int bits)
+void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-16384,+16384
 {
-	float span = x_max - x_min;
-	float offset = x_min;
-	return ((float)x_int) * span / ((float)((1 << bits) - 1)) + offset;
+	CAN_TxHeaderTypeDef chassis_tx_message;
+	uint8_t chassis_can_send_data[8];
+	uint32_t send_mail_box;
+	chassis_tx_message.StdId = CAN_CHASSIS_ALL_ID;
+	chassis_tx_message.IDE = CAN_ID_STD;
+	chassis_tx_message.RTR = CAN_RTR_DATA;
+	chassis_tx_message.DLC = 0x08;
+	chassis_can_send_data[0] = motor1 >> 8;
+	chassis_can_send_data[1] = motor1;
+	chassis_can_send_data[2] = motor2 >> 8;
+	chassis_can_send_data[3] = motor2;
+	chassis_can_send_data[4] = motor3 >> 8;
+	chassis_can_send_data[5] = motor3;
+	chassis_can_send_data[6] = motor4 >> 8;
+	chassis_can_send_data[7] = motor4;
+
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
+	if (status != HAL_OK)
+	{
+		// can∑¢ÀÕ ß∞‹ÀÕ»Îcan∑¢ÀÕ∂”¡–÷–
+		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
+	}
 }
 
-int float_to_uint(float x, float x_min, float x_max, int bits)
+void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
 {
-	float span = x_max - x_min;
-	float offset = x_min;
-	return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
+	CAN_TxHeaderTypeDef cap_tx_message;
+	uint8_t cap_can_send_data[8];
+	uint32_t send_mail_box;
+	cap_tx_message.StdId = CAN_CAP_TX_ID;
+	cap_tx_message.IDE = CAN_ID_STD;
+	cap_tx_message.RTR = CAN_RTR_DATA;
+	cap_tx_message.DLC = 0x08;
+
+	uint16_t temp;
+
+	temp = data1 * 100;
+	cap_can_send_data[0] = temp;
+	cap_can_send_data[1] = temp >> 8;
+	temp = data2 * 100;
+	cap_can_send_data[2] = temp;
+	cap_can_send_data[3] = temp >> 8;
+	temp = data3 * 100;
+	cap_can_send_data[4] = temp;
+	cap_can_send_data[5] = temp >> 8;
+	temp = data4 * 100;
+	cap_can_send_data[6] = temp;
+	cap_can_send_data[7] = temp >> 8;
+
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
+	if (status != HAL_OK)
+	{
+		// can∑¢ÀÕ ß∞‹ÀÕ»Îcan∑¢ÀÕ∂”¡–÷–
+		CAN_TxQueue_Push(&cap_tx_message, cap_can_send_data);
+	}
+}
+
+void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
+{
+	CAN_TxHeaderTypeDef gimbal_tx_message;
+	uint8_t gimbal_can_send_data[8];
+	uint32_t send_mail_box;
+	gimbal_tx_message.StdId = CAN_GIMBAL_ALL_ID;
+	gimbal_tx_message.IDE = CAN_ID_STD;
+	gimbal_tx_message.RTR = CAN_RTR_DATA;
+	gimbal_tx_message.DLC = 0x08;
+	gimbal_can_send_data[0] = motor1 >> 8;
+	gimbal_can_send_data[1] = motor1;
+	gimbal_can_send_data[2] = motor2 >> 8;
+	gimbal_can_send_data[3] = motor2;
+	gimbal_can_send_data[4] = motor3 >> 8;
+	gimbal_can_send_data[5] = motor3;
+	gimbal_can_send_data[6] = motor4 >> 8;
+	gimbal_can_send_data[7] = motor4;
+
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(&GIMBAL_CAN, &gimbal_tx_message, gimbal_can_send_data, &send_mail_box);
+	if (status != HAL_OK)
+	{
+		// can∑¢ÀÕ ß∞‹ÀÕ»Îcan∑¢ÀÕ∂”¡–÷–
+		CAN_TxQueue_Push(&gimbal_tx_message, gimbal_can_send_data);
+	}
+}
+
+void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
+{
+	CAN_TxHeaderTypeDef shoot_tx_message;
+	uint8_t shoot_can_send_data[8];
+	uint32_t send_mail_box;
+	shoot_tx_message.StdId = CAN_SHOOT_ALL_ID;
+	shoot_tx_message.IDE = CAN_ID_STD;
+	shoot_tx_message.RTR = CAN_RTR_DATA;
+	shoot_tx_message.DLC = 0x08;
+	shoot_can_send_data[0] = motor1 >> 8;
+	shoot_can_send_data[1] = motor1;
+	shoot_can_send_data[2] = motor2 >> 8;
+	shoot_can_send_data[3] = motor2;
+	shoot_can_send_data[4] = motor3 >> 8;
+	shoot_can_send_data[5] = motor3;
+	shoot_can_send_data[6] = motor4 >> 8;
+	shoot_can_send_data[7] = motor4;
+
+	HAL_CAN_AddTxMessage(&SHOOT_CAN, &shoot_tx_message, shoot_can_send_data, &send_mail_box);
 }

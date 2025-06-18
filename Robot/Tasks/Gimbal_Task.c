@@ -14,6 +14,7 @@
 #include "Nmanifold_usbd_task.h"
 #include "referee.h"
 #include "Vofa_send.h"
+#include "user_common_lib.h"
 
 #define ANGLE_TO_RAD 0.01745f
 #define RAD_TO_ANGLE 57.295779f
@@ -21,7 +22,7 @@
 #define PITCH_ECD_ANGLE_MAX 27280 // 27800
 #define PITCH_ECD_ANGLE_MIN 24700 // 25000
 
-// yaw,pitchǰ��ϵ��
+// yaw,pitch??????
 #define YAW_MOTOR_AUTO_AIM_FF 2.5f
 #define PITCH_MOTOR_AUTO_AIM_FF 1.8f
 
@@ -65,38 +66,9 @@
 
 gimbal_motor_t gimbal_m6020[2] = {0};
 
-uint8_t auto_aim_tracking = 0;
 float auto_aim_yaw_last = 0;
 float yaw_angle_err = 0;
 float pitch_angle_err = 0;
-uint8_t could_rotate_180 = 1;
-
-static void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
-{
-    CAN_TxHeaderTypeDef gimbal_tx_message;
-    uint8_t gimbal_can_send_data[8];
-    uint32_t send_mail_box;
-    gimbal_tx_message.StdId = CAN_GIMBAL_ALL_ID;
-    gimbal_tx_message.IDE = CAN_ID_STD;
-    gimbal_tx_message.RTR = CAN_RTR_DATA;
-    gimbal_tx_message.DLC = 0x08;
-    gimbal_can_send_data[0] = motor1 >> 8;
-    gimbal_can_send_data[1] = motor1;
-    gimbal_can_send_data[2] = motor2 >> 8;
-    gimbal_can_send_data[3] = motor2;
-    gimbal_can_send_data[4] = motor3 >> 8;
-    gimbal_can_send_data[5] = motor3;
-    gimbal_can_send_data[6] = motor4 >> 8;
-    gimbal_can_send_data[7] = motor4;
-
-    HAL_StatusTypeDef status;
-    status = HAL_CAN_AddTxMessage(&GIMBAL_CAN, &gimbal_tx_message, gimbal_can_send_data, &send_mail_box);
-    if (status != HAL_OK)
-    {
-        // ����ʧ��ʱ���?
-        CAN_TxQueue_Push(&gimbal_tx_message, gimbal_can_send_data);
-    }
-}
 
 static float angle_error_calc(float target, float current)
 {
@@ -140,84 +112,36 @@ void Gimbal_Motor_Data_Update(void)
     DM_pitch_motor_data.INS_angle = INS_angle_deg[2];
 }
 
-void If_Could_Rotate_180_Flag_Update(float yaw_angle_error)
-{
-    typedef enum {
-        STATE_NORMAL,
-        STATE_WAIT_TRIGGER,
-        STATE_DISABLED
-    } autoaim_rotate_state_t;
-    
-    static autoaim_rotate_state_t state = STATE_NORMAL;
-    static TickType_t state_entry_time = 0;
-    const TickType_t TRIGGER_DELAY = pdMS_TO_TICKS(400);    // 400ms触发延迟
-    const TickType_t DISABLE_DURATION = pdMS_TO_TICKS(10000);// 10秒禁用期
-
-    switch(state)
-    {
-        case STATE_NORMAL:
-            if(fabs(yaw_angle_error) > 120.0f)
-            {
-                state = STATE_WAIT_TRIGGER;
-                state_entry_time = xTaskGetTickCount();
-            }
-						break;
-
-        case STATE_WAIT_TRIGGER:
-            if(xTaskGetTickCount() - state_entry_time >= TRIGGER_DELAY)
-            {
-                state = STATE_DISABLED;
-                state_entry_time = xTaskGetTickCount();
-                could_rotate_180 = 0;
-            }
-            break;
-
-        case STATE_DISABLED:
-            if(xTaskGetTickCount() - state_entry_time >= DISABLE_DURATION)
-            {
-                state = STATE_NORMAL;
-                could_rotate_180 = 1;
-            }
-						break;
-    }
-}
 void Yaw_Motor_Control(void)
 {
-    static uint8_t yaw_mode = 0, yaw_mode_last = 0; // 0:speed,1:angle
-    auto_aim_tracking = AutoAim_Data_Receive.track;
-//		if( could_rotate_180 == 0 )
-//		{
-//					If_Could_Rotate_180_Flag_Update(yaw_angle_err);
-//					gimbal_m6020[0].INS_speed_set = AutoAim_Data_Receive.yaw_speed * RAD_TO_ANGLE;
-//		}
-    if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0) // ������
+    static uint8_t yaw_mode = 0, yaw_mode_last = 0;                               // 0:speed,1:angle
+    if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0) // ??????
     {
         yaw_angle_err = angle_error_calc(AutoAim_Data_Receive.yaw_aim, gimbal_m6020[0].INS_angle);
-//				If_Could_Rotate_180_Flag_Update(yaw_angle_err);
         PID_calc(&gimbal_m6020[0].auto_aim_pid, yaw_angle_err, 0);
-        gimbal_m6020[0].INS_speed_set = (-gimbal_m6020[0].auto_aim_pid.out) + (gimbal_m6020[0].INS_speed - gimbal_m6020[0].INS_speed_last) * YAW_MOTOR_AUTO_AIM_FF; // ��0.8��Ŀ��yaw���ٶȡ�ǰ��
+        gimbal_m6020[0].INS_speed_set = (-gimbal_m6020[0].auto_aim_pid.out) + (gimbal_m6020[0].INS_speed - gimbal_m6020[0].INS_speed_last) * YAW_MOTOR_AUTO_AIM_FF; // ??0.8?????yaw?????????
         gimbal_m6020[0].INS_angle_set = AutoAim_Data_Receive.yaw_aim;
         yaw_mode = yaw_mode_last = 1;
     }
 
-    // ң�������Կ���
+    // ????????????
     else if (rc_ctrl.rc.s[1] == RC_SW_MID)
     {
         yaw_mode_last = yaw_mode;
         if (rc_ctrl.rc.ch[0] > 10 || rc_ctrl.rc.ch[0] < -10)
         {
-            yaw_mode = 0; // 0�ٶȻ�
+            yaw_mode = 0; // 0????
         }
         else
         {
-            yaw_mode = 1; // 1λ�û�
+            yaw_mode = 1; // 1?????
         }
 
         if (yaw_mode == 0)
         {
             gimbal_m6020[0].INS_speed_set = -(float)rc_ctrl.rc.ch[0] / 660.0f * 5.0f * RAD_TO_ANGLE;
         }
-        else if (yaw_mode == 1 && yaw_mode_last == 0) // yaw�ᶨ����״̬�л��ĽǶ�
+        else if (yaw_mode == 1 && yaw_mode_last == 0) // yaw????????????????
         {
             gimbal_m6020[0].INS_angle_set = gimbal_m6020[0].INS_angle;
         }
@@ -229,7 +153,7 @@ void Yaw_Motor_Control(void)
             gimbal_m6020[0].INS_speed_set = -gimbal_m6020[0].angle_pid.out;
         }
     }
-    else if (rc_ctrl.rc.s[1] == RC_SW_UP) // ��ʧĿ��yawͣ����
+    else if (rc_ctrl.rc.s[1] == RC_SW_UP) // ??????yaw?????
     {
         static uint32_t zero_speed_start_time = 0;
         static uint8_t zero_speed_flag = 0;
@@ -259,7 +183,7 @@ void Pitch_Motor_Control(void)
 {
     static uint8_t pitch_mode = 0, pitch_mode_last = 0; // 0:speed,1:angle
 
-    // ������
+    // ??????
     if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0)
     {
 
@@ -272,7 +196,7 @@ void Pitch_Motor_Control(void)
         pitch_mode = pitch_mode_last = 1;
     }
 
-    // ң��������
+    // ?????????
     else if (rc_ctrl.rc.s[1] == RC_SW_MID)
     {
         pitch_mode_last = pitch_mode;
@@ -300,14 +224,14 @@ void Pitch_Motor_Control(void)
             DM_pitch_motor_data.INS_speed_set = DM_pitch_motor_data.auto_aim_pid.out;
         }
     }
-    else if (rc_ctrl.rc.s[1] == RC_SW_UP) // ������pitch����ҡ
+    else if (rc_ctrl.rc.s[1] == RC_SW_UP) // ??????pitch?????
     {
         fp32 pitch_up_down_aim = Pitch_Updown();
         PID_calc(&DM_pitch_motor_data.angle_pid, DM_pitch_motor_data.INS_angle, pitch_up_down_aim);
         DM_pitch_motor_data.INS_speed_set = DM_pitch_motor_data.angle_pid.out;
     }
 
-    // DM������λ
+    // DM????????
     if ((DM_pitch_motor_data.p_int > PITCH_ECD_ANGLE_MAX || DM_pitch_motor_data.p_int < PITCH_ECD_ANGLE_MIN) && (DM_pitch_motor_data.p_int < 50000))
     {
         if (DM_pitch_motor_data.p_int < PITCH_ECD_ANGLE_MIN && DM_pitch_motor_data.INS_speed_set > 0)
@@ -331,7 +255,7 @@ float Pitch_Updown(void)
     static uint8_t updown_switch_flag = 0;
     uint8_t speed_state = AutoAim_Data_Receive.pitch_speed ? 1 : 0;
 
-    const PitchSwingParams swing_params[2] = {{-10.0f, 20.0f, 0.05f}, {-24.0f, -15.0f, 0.025f}}; // 前一组数据打人，后一组打前哨
+    const PitchSwingParams swing_params[2] = {{-10.0f, 20.0f, 0.05f}, {-24.0f, -15.0f, 0.025f}}; // ?????????????????????
 
     if (updown_switch_flag == 0)
     {
@@ -360,7 +284,7 @@ void DM_Auto_Enable()
     static uint8_t gimbal_output_last = 0;
     if (Game_Robot_State.power_management_gimbal_output && !gimbal_output_last)
     {
-        enable_send_count = 5; // ʹ�����?
+        enable_send_count = 5; // ???????
         HAL_Delay(1000);
     }
     gimbal_output_last = Game_Robot_State.power_management_gimbal_output;
@@ -433,8 +357,8 @@ void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float
 
     // uint8_t *pbuf,*vbuf;
     Tx_Msg.StdId = id;         // set chassis motor current.
-    Tx_Msg.IDE = CAN_ID_STD;   // ��ʹ����չ��ʶ��
-    Tx_Msg.RTR = CAN_RTR_DATA; // ��Ϣ����Ϊ����֡��һ֡8λ
+    Tx_Msg.IDE = CAN_ID_STD;   // ?????????????
+    Tx_Msg.RTR = CAN_RTR_DATA; // ?????????????????8??
     Tx_Msg.DLC = 8;
 
     uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
@@ -484,7 +408,7 @@ void enable_DM(uint8_t id, uint8_t ctrl_mode)
     HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
 }
 
-// ����ʧ��֡
+// ????????
 void disable_DM(uint8_t id, uint8_t ctrl_mode)
 {
     uint8_t TX_Data[8];

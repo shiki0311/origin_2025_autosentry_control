@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"bsp_can.h": "c",
+			"shoot_task.h": "c",
+			"gimbal_task.h": "c",
+			"struct_typedef.h": "c",
+			"chassis_task.h": "c"
+		}
+	}
+}

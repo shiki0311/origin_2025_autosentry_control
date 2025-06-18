@@ -528,6 +528,11 @@
               <FileType>1</FileType>
               <FilePath>..\Robot\App\Vofa_send.c</FilePath>
             </File>
+            <File>
+              <FileName>DM_motor_support.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Robot\App\DM_motor_support.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -3524,6 +3529,11 @@
               <FileName>CRCs.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\support\CRCs.c</FilePath>
+            </File>
+            <File>
+              <FileName>user_common_lib.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Robot\support\user_common_lib.c</FilePath>
             </File>
           </Files>
         </Group>

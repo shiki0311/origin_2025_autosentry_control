@@ -47,6 +47,5 @@ extern uint8_t if_single_hit;
 extern int16_t dial_speed;
 void Fric_PWR(uint8_t power);
 void Shoot_Task(void const *argument);
-void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 
 #endif

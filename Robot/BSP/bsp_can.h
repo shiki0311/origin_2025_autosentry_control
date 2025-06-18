@@ -1,3 +1,10 @@
+/*
+ * @file:
+ * @author:
+ * @date:
+ * @brief:
+ * @attention:
+ */
 #ifndef BSP_CAN_H
 #define BSP_CAN_H
 
@@ -51,10 +58,10 @@ typedef struct
 
 } DM_motor_data_t;
 
-#pragma pack(pop) //杩欒浣嶇疆鍒敼锛宲id.h閲岄潰鎴戝啓娉ㄩ噴鐨勪袱琛屼篃鍒敼
+#pragma pack(pop) // 这行位置别改，pid.h里面我写注释的两行也别改
 
 /**
- * can锟斤拷息锟结构锟斤拷
+ * can???????
  */
 typedef struct
 {
@@ -62,7 +69,7 @@ typedef struct
 	CAN_TxHeaderTypeDef tx_header;
 } CanTxMsgTypeDef;
 
-/* can锟斤拷息锟斤拷锟叫结构锟斤拷 */
+/* can??????н??? */
 typedef struct
 {
 	CanTxMsgTypeDef can_msg_buffer[TX_QUEUE_SIZE];
@@ -71,18 +78,19 @@ typedef struct
 	uint8_t element_number;
 } CanTxQueueTypeDef;
 
-
 extern void can_filter_init(void);
 
 extern motor_measure_t motor_measure_chassis[4];
 extern motor_measure_t motor_measure_gimbal[2];
 extern motor_measure_t motor_measure_shoot[3];
 extern DM_motor_data_t DM_pitch_motor_data;
-extern int32_t dial_angle ;
+extern int32_t dial_angle;
 
-float uint_to_float(int x_int, float x_min, float x_max, int bits);
-int float_to_uint(float x, float x_min, float x_max, int bits);
 void CAN_TxQueue_Push(CAN_TxHeaderTypeDef *pHeader, uint8_t *pData);
 void CAN_TxQueue_Init();
+void CAN_Cap_CMD(float data1, float data2, float data3, float data4);
+void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
+void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
+void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 
 #endif
