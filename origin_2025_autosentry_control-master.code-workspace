@@ -10,7 +10,9 @@
 			"shoot_task.h": "c",
 			"gimbal_task.h": "c",
 			"struct_typedef.h": "c",
-			"chassis_task.h": "c"
-		}
+			"chassis_task.h": "c",
+			"freertos.h": "c"
+		},
+		"files.encoding": "gb2312"
 	}
 }

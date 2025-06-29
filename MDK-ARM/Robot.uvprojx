@@ -479,11 +479,6 @@
               <FilePath>..\Robot\Tasks\Switch_Task.c</FilePath>
             </File>
             <File>
-              <FileName>Ear_Task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\Tasks\Ear_Task.c</FilePath>
-            </File>
-            <File>
               <FileName>Chassis_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\Tasks\Chassis_Task.c</FilePath>

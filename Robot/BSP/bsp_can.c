@@ -1,10 +1,3 @@
-/*
- * @file:
- * @author:
- * @date:
- * @brief:
- * @attention:
- */
 #include "bsp_can.h"
 #include "bsp_cap.h"
 #include "main.h"
@@ -22,8 +15,8 @@
 #define KP_MAX 500.0f
 #define KD_MIN 0.0f
 #define KD_MAX 5.0f
-#define T_MIN -10.0f
-#define T_MAX 10.0f
+#define T_MIN -30.0f
+#define T_MAX 30.0f
 #define DM4310_RecID 0x00
 #define get_motor_measure(ptr, data)                                   \
 	{                                                                  \

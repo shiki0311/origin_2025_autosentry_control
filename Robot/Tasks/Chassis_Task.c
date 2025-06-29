@@ -40,21 +40,15 @@
 #define M3505_MOTOR_SPEED_PID_KI 0.006f
 #define M3505_MOTOR_SPEED_PID_KD 0.0f
 #define M3505_MOTOR_SPEED_PID_MAX_OUT 16000.0f
-#define M3505_MOTOR_SPEED_PID_MAX_IOUT 2000.0f
+#define M3505_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
 
-#define CHASSIS_FOLLOW_GIMBAL_PID_KP 450.0f
+#define CHASSIS_FOLLOW_GIMBAL_PID_KP 360.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_KI 0.0f
-#define CHASSIS_FOLLOW_GIMBAL_PID_KD 5000.0f
+#define CHASSIS_FOLLOW_GIMBAL_PID_KD 200.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT 20000.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT 1500.0f
 
 #define ROTATE_MOVE_FF 0.012f // 小陀螺模式下的
-
-#define CHASSIS_POWER_PID_KP 0.03f
-#define CHASSIS_POWER_PID_KI 0.00f
-#define CHASSIS_POWER_PID_KD 0.0f
-#define CHASSIS_POWER_PID_MAX_OUT 1.0f
-#define CHASSIS_POWER_PID_MAX_IOUT 1000.0f
 
 #define NAV_SPEED_FAST 800.0f // 导航发过来的速度乘以的系数，非上坡用
 #define NAV_SPEED_SLOW 400.0f // 导航发过来的速度乘以的系数，非上坡用
@@ -76,10 +70,7 @@ chassis_command_t chassis_commands[] = {{FOLLOW_GIMBAL, chassis_follow_gimbal_ha
 health_state_t health_state = HEALTH_NORMAL;
 chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
 chassis_motor_t chassis_m3508[4] = {0};
-chassis_control_t chassis_control;
-bool_t chassis_follow_gimbal_zerochange = FALSE;
-fp32 chassis_power_limit = 0, chassis_power_buffer = 0;
-fp32 init_chassis_power = 0.0;
+chassis_control_t chassis_control = {0};
 const fp32 factor[3] = {1.54, 1.54, 1.54};
 /*************************************************************/
 
@@ -106,14 +97,13 @@ static void Chassis_Motor_Data_Update(void)
 		chassis_m3508[i].speed = (chassis_m3508[i].speed) * (1 - lpf_ratio) + chassis_m3508_last_speed[i] * lpf_ratio;
 		chassis_m3508_last_speed[i] = motor_measure_chassis[i].speed_rpm;
 	}
-	//	chassis_power_limit=Game_Robot_State.chassis_power_limit; //
-	chassis_power_buffer = Power_Heat_Data.buffer_energy; //
 }
+
 static void Chassis_Max_Power_Update(void) // 根据不同模式选择不同底盘功率上限
 {
 	if (!cap_recieve_flag)
 	{
-		chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+		chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
 		return;
 	}
 	// todo
@@ -138,32 +128,30 @@ static void Chassis_Max_Power_Update(void) // 根据不同模式选择不同底盘功率上限
 		switch (chassis_max_power_control_flag)
 		{
 		case REMOTE_CONTROL:
-			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
+			chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
 			break;
 		case NAV_NORMAL_MODE:
-			chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
+			chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit - 5;
 			break;
 		case HURT:
-			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 70;
+			chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 70;
 			break;
 		case UPHILL_START:
-			chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
+			chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit + cap_data.cap_per * 100;
 			break;
 		case ON_HILL:
-			chassis_power_limit = Game_Robot_State.chassis_power_limit + 100;
+			chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit + 100;
 			break;
 		}
 	}
 	else
 	{
-		chassis_power_limit = Game_Robot_State.chassis_power_limit - (1 - cap_data.cap_per) * 10;
+		chassis_control.chassis_power_limit = Game_Robot_State.chassis_power_limit - (1 - cap_data.cap_per) * 10;
 	}
 }
 
 static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
 {
-	chassis_mode_t chassis_mode = SAFE;
-
 	bool_t rc_ctrl_follow_gimbal = ((rc_ctrl.rc.s[1] == RC_SW_MID) && (rc_ctrl.rc.ch[4] < 500) && (rc_ctrl.rc.ch[4] > -500)); // 是否满足遥控器控制时底盘跟随云台模式，下面以此类推
 	bool_t rc_ctrl_rotate = ((rc_ctrl.rc.s[1] == RC_SW_MID) && !rc_ctrl_follow_gimbal);
 	bool_t rc_ctrl_safe = ((rc_ctrl.rc.s[1] == RC_SW_DOWN) || toe_is_error(DBUS_TOE));
@@ -173,18 +161,16 @@ static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
 
 	if (rc_ctrl_safe || nav_safe)
 	{
-		chassis_mode = SAFE; // 失能模式的优先级最高，需要优先判断
+		*mode = SAFE; // 失能模式的优先级最高，需要优先判断
 	}
 	else if (rc_ctrl_rotate || nav_rotate)
 	{
-		chassis_mode = ROTATE;
+		*mode = ROTATE;
 	}
 	else if (rc_ctrl_follow_gimbal || nav_follow_gimbal)
 	{
-		chassis_mode = FOLLOW_GIMBAL;
+		*mode = FOLLOW_GIMBAL;
 	}
-
-	*mode = chassis_mode;
 	return *mode;
 }
 
@@ -227,19 +213,19 @@ void power_control()
 	fp32 initial_give_power[4];
 	fp32 final_give_power[4];
 
-	init_chassis_power = 0;
+	chassis_control.init_chassis_power = 0;
 
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		initial_give_power[i] = toque_coefficient * chassis_m3508[i].give_current * chassis_m3508[i].speed + k1 * chassis_m3508[i].give_current * chassis_m3508[i].give_current + k2 * chassis_m3508[i].speed * chassis_m3508[i].speed + constant;
 		if (initial_give_power[i] < 0)
 			continue;
-		init_chassis_power += initial_give_power[i];
+		chassis_control.init_chassis_power += initial_give_power[i];
 	}
 
-	if (init_chassis_power > chassis_power_limit)
+	if (chassis_control.init_chassis_power > chassis_control.chassis_power_limit)
 	{
-		fp32 power_scale = chassis_power_limit / init_chassis_power;
+		fp32 power_scale = chassis_control.chassis_power_limit / chassis_control.init_chassis_power;
 		for (uint8_t i = 0; i < 4; i++)
 		{
 			scaled_give_power[i] = initial_give_power[i] * power_scale;
@@ -285,6 +271,7 @@ static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 
 	*wheel2 = (-vx_set - vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 	*wheel3 = (-vx_set + vy_set) - MOTOR_DISTANCE_TO_CENTER * wz_set;
 }
+
 /**
  * @brief  设置底盘四个3508电机的电流
  */
@@ -301,7 +288,7 @@ static void chassis_motor_current_set(chassis_mode_t mode)
 
 fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle)
 {
-	float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f); // ?????????????????????[-??,??]????
+	float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f);
 
 	if (angle_front_err > 135 || angle_front_err <= -135)
 		return CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO;
@@ -347,7 +334,7 @@ fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
 }
 
 /**
- * @brief  设置小陀螺时的底盘角速度，只在rotate_handler中调用
+ * @brief  设置小陀螺时的底盘角速度，只在chassis_rotate_handler中调用
  */
 fp32 Set_Rotate_Wz(fp32 *wz)
 {
@@ -380,10 +367,10 @@ void chassis_follow_gimbal_handler(void)
 {
 	static fp32 chassis_follow_gimbal_zero_actual = CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
 
-	if (chassis_follow_gimbal_zerochange == TRUE)
+	if (chassis_control.chassis_follow_gimbal_zerochange == TRUE)
 	{
 		chassis_follow_gimbal_zero_actual = Angle_Z_Suit_ZERO_Get(gimbal_m6020[0].ENC_angle);
-		chassis_follow_gimbal_zerochange = FALSE;
+		chassis_control.chassis_follow_gimbal_zerochange = FALSE;
 	}
 	chassis_control.chassis_follow_gimbal_angle = Limit_To_180((float)(((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - (uint16_t)chassis_follow_gimbal_zero_actual)) % 8192) / 8192.0f * 360.0f);
 	fp32 chassis_yaw_nearest_zero_rad = -(chassis_control.chassis_follow_gimbal_angle + Limit_To_180((float)(chassis_follow_gimbal_zero_actual - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f)) / 180.0f * 3.14159f;
@@ -397,7 +384,7 @@ void chassis_follow_gimbal_handler(void)
  */
 void chassis_rotate_handler(void)
 {
-	chassis_follow_gimbal_zerochange = TRUE; // 进入小陀螺模式当前底盘零点会切换
+	chassis_control.chassis_follow_gimbal_zerochange = TRUE; // 进入小陀螺模式当前底盘零点会切换
 
 	chassis_control.chassis_follow_gimbal_angle = Limit_To_180((float)((uint16_t)((uint16_t)gimbal_m6020[0].ENC_angle + (8192 - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) - chassis_control.wz * ROTATE_MOVE_FF) % 8192) / 8192.0f * 360.0f);
 	fp32 rotate_yaw_rad = -(chassis_control.chassis_follow_gimbal_angle) / 180.0f * 3.14159f; // 小陀螺模式下当前零点距离yaw轴的弧度差
@@ -411,7 +398,7 @@ void chassis_rotate_handler(void)
  */
 void chassis_safe_handler(void)
 {
-	chassis_follow_gimbal_zerochange = TRUE; // 进入失能模式当前底盘零点可能会切换，模式切换到底盘跟随云台后需要重新寻找零点
+	chassis_control.chassis_follow_gimbal_zerochange = TRUE; // 进入失能模式当前底盘零点可能会切换，模式切换到底盘跟随云台后需要重新寻找零点
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		chassis_m3508[i].give_current = 0;
@@ -427,7 +414,7 @@ void chassis_safe_handler(void)
 void chassis_vector_set(chassis_mode_t mode)
 {
 	int size = sizeof(chassis_commands) / sizeof(chassis_command_t);
-	for (int i = 0; i < size; i++)
+	for (int i = 0; i < size; i++) // 寻找匹配当前模式的控制函数
 	{
 		if (chassis_commands[i].mode == mode)
 		{

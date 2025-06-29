@@ -66,6 +66,10 @@ typedef struct
   fp32 wz;
 
   fp32 chassis_follow_gimbal_angle;
+  fp32 chassis_power_limit;
+  fp32 init_chassis_power;
+  bool_t chassis_follow_gimbal_zerochange;
+
   pid_type_def chassis_follow_gimbal_pid;
 } chassis_control_t;
 

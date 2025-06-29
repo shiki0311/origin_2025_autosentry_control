@@ -22,9 +22,10 @@
 #define PITCH_ECD_ANGLE_MAX 27280 // 27800
 #define PITCH_ECD_ANGLE_MIN 24700 // 25000
 
-// yaw,pitch??????
+// yaw,pitch
 #define YAW_MOTOR_AUTO_AIM_FF 2.5f
 #define PITCH_MOTOR_AUTO_AIM_FF 1.8f
+#define PITCH_MOTOR_GRAVITY_COMPENSATE (3.0f)
 
 #define YAW_MOTOR_SPEED_PID_KP 600.0f
 #define YAW_MOTOR_SPEED_PID_KI 1.1f // 80.0f
@@ -114,8 +115,8 @@ void Gimbal_Motor_Data_Update(void)
 
 void Yaw_Motor_Control(void)
 {
-    static uint8_t yaw_mode = 0, yaw_mode_last = 0;                               // 0:speed,1:angle
-    if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0) // ??????
+    static uint8_t yaw_mode = 0, yaw_mode_last = 0;
+    if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0)
     {
         yaw_angle_err = angle_error_calc(AutoAim_Data_Receive.yaw_aim, gimbal_m6020[0].INS_angle);
         PID_calc(&gimbal_m6020[0].auto_aim_pid, yaw_angle_err, 0);
@@ -246,7 +247,7 @@ void Pitch_Motor_Control(void)
         }
     }
     PID_calc(&DM_pitch_motor_data.speed_pid, DM_pitch_motor_data.INS_speed, DM_pitch_motor_data.INS_speed_set);
-    DM_pitch_motor_data.target_current = -DM_pitch_motor_data.speed_pid.out;
+    DM_pitch_motor_data.target_current = -DM_pitch_motor_data.speed_pid.out + PITCH_MOTOR_GRAVITY_COMPENSATE;
 }
 
 float Pitch_Updown(void)
@@ -255,7 +256,7 @@ float Pitch_Updown(void)
     static uint8_t updown_switch_flag = 0;
     uint8_t speed_state = AutoAim_Data_Receive.pitch_speed ? 1 : 0;
 
-    const PitchSwingParams swing_params[2] = {{-10.0f, 20.0f, 0.05f}, {-24.0f, -15.0f, 0.025f}}; // ?????????????????????
+    const PitchSwingParams swing_params[2] = {{-10.0f, 20.0f, 0.05f}, {-24.0f, -15.0f, 0.025f}};
 
     if (updown_switch_flag == 0)
     {
