@@ -72,6 +72,13 @@ typedef struct
 
   pid_type_def chassis_follow_gimbal_pid;
 } chassis_control_t;
+typedef struct
+{
+  float vx; // (m/s)
+  float vy; // (m/s)
+  float wz; // (rad/s)
+
+} chassis_real_speed_t;
 
 extern chassis_motor_t chassis_m3508[4];
 extern chassis_control_t chassis_control;

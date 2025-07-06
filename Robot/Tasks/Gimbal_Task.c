@@ -1,3 +1,10 @@
+/****************************************************************
+ * @file: 	Gimbal_Task.c
+ * @author: Shiki
+ * @date:	2025.6.18
+ * @brief:	哨兵云台任务
+ * @attention:
+ ******************************************************************/
 #include "Gimbal_Task.h"
 #include "INS_Task.h"
 #include "Shoot_Task.h"
@@ -11,7 +18,7 @@
 #include "arm_math.h"
 #include "usart.h"
 #include "string.h"
-#include "Nmanifold_usbd_task.h"
+#include "Cboard_To_Nuc_usbd_communication.h"
 #include "referee.h"
 #include "Vofa_send.h"
 #include "user_common_lib.h"
@@ -20,40 +27,41 @@
 #define RAD_TO_ANGLE 57.295779f
 
 #define PITCH_ECD_ANGLE_MAX 27280 // 27800
-#define PITCH_ECD_ANGLE_MIN 24700 // 25000
+#define PITCH_ECD_ANGLE_MIN 24600 // 25000
 
-// yaw,pitch
+/****************************************重力补偿参数和自瞄微分先行系数*******************************************************/
 #define YAW_MOTOR_AUTO_AIM_FF 2.5f
 #define PITCH_MOTOR_AUTO_AIM_FF 1.8f
-#define PITCH_MOTOR_GRAVITY_COMPENSATE (3.0f)
-
-#define YAW_MOTOR_SPEED_PID_KP 600.0f
-#define YAW_MOTOR_SPEED_PID_KI 1.1f // 80.0f
-#define YAW_MOTOR_SPEED_PID_KD 0.00f
+#define PITCH_MOTOR_GRAVITY_STATIC_COMPENSATE (2.5f)  // 用于补偿重力，pitch轴与地面平行时抵消重力所需的力矩
+#define PITCH_MOTOR_GRAVITY_DYNAMIC_COMPENSATE (1.1f) // 用于补偿重力，pitch轴与地面不平行时抵消重力所需的偏置力矩系数
+/**************************************************************************************************************************/
+#define YAW_MOTOR_SPEED_PID_KP 800.0f
+#define YAW_MOTOR_SPEED_PID_KI 0.0f // 80.0f
+#define YAW_MOTOR_SPEED_PID_KD 200.0f
 #define YAW_MOTOR_SPEED_PID_MAX_OUT 30000.0f
 #define YAW_MOTOR_SPEED_PID_MAX_IOUT 10000.0f
 
-#define YAW_MOTOR_ANGLE_PID_KP 20.0f
-#define YAW_MOTOR_ANGLE_PID_KI 0.00013113f
-#define YAW_MOTOR_ANGLE_PID_KD 200.3f
+#define YAW_MOTOR_ANGLE_PID_KP 11.0f
+#define YAW_MOTOR_ANGLE_PID_KI 0.0f
+#define YAW_MOTOR_ANGLE_PID_KD 400.0f
 #define YAW_MOTOR_ANGLE_PID_MAX_OUT 1200.0f
 #define YAW_MOTOR_ANGLE_PID_MAX_IOUT 50.0f
 
 #define YAW_MOTOR_AUTO_AIM_PID_KP 25.0f
-#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0001f
+#define YAW_MOTOR_AUTO_AIM_PID_KI 0.0f
 #define YAW_MOTOR_AUTO_AIM_PID_KD 50.0f
-#define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 800.0f
+#define YAW_MOTOR_AUTO_AIM_PID_MAX_OUT 1200.0f
 #define YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT 0.0f
 
-#define PITCH_MOTOR_SPEED_PID_KP 4.5f
-#define PITCH_MOTOR_SPEED_PID_KI 0.0004f
-#define PITCH_MOTOR_SPEED_PID_KD 0.0f
+#define PITCH_MOTOR_SPEED_PID_KP 5.0f
+#define PITCH_MOTOR_SPEED_PID_KI 0.0f
+#define PITCH_MOTOR_SPEED_PID_KD 3.0f
 #define PITCH_MOTOR_SPEED_PID_MAX_OUT 10.0f
-#define PITCH_MOTOR_SPEED_PID_MAX_IOUT 5.0f
+#define PITCH_MOTOR_SPEED_PID_MAX_IOUT 1.0f
 
-#define PITCH_MOTOR_ANGLE_PID_KP 0.05f // 0.2f
-#define PITCH_MOTOR_ANGLE_PID_KI 0.001f
-#define PITCH_MOTOR_ANGLE_PID_KD 20.0f // 3.0f
+#define PITCH_MOTOR_ANGLE_PID_KP 0.2f // 0.2f
+#define PITCH_MOTOR_ANGLE_PID_KI 0.0f
+#define PITCH_MOTOR_ANGLE_PID_KD 10.0f // 3.0f
 #define PITCH_MOTOR_ANGLE_PID_MAX_OUT 4.5f
 #define PITCH_MOTOR_ANGLE_PID_MAX_IOUT 1.0f
 
@@ -63,13 +71,11 @@
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 20.0f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 0.0f
 
-#define MAX_YAW_AUTOAIM_ROTATE 120.0f
-
 gimbal_motor_t gimbal_m6020[2] = {0};
 
-float auto_aim_yaw_last = 0;
 float yaw_angle_err = 0;
 float pitch_angle_err = 0;
+uint8_t yaw_rotate_flag = 0;
 
 static float angle_error_calc(float target, float current)
 {
@@ -113,19 +119,44 @@ void Gimbal_Motor_Data_Update(void)
     DM_pitch_motor_data.INS_angle = INS_angle_deg[2];
 }
 
+/**
+ * @description: 检查自瞄目标是否丢失，若丢失则yaw电机原地停两秒防止敌人再次出现，复活赛弃用，联盟赛可开启
+ * @return none
+ */
+void Check_Yaw_LostTarget_Wait()
+{
+    static uint32_t zero_speed_start_time = 0;
+    static uint8_t zero_speed_flag = 0;
+    static float auto_aim_yaw_last = 0;
+    if (AutoAim_Data_Receive.yaw_aim == 0 && auto_aim_yaw_last != 0)
+    {
+        zero_speed_start_time = xTaskGetTickCount();
+        zero_speed_flag = 1;
+    }
+    if (zero_speed_flag && (xTaskGetTickCount() - zero_speed_start_time <= pdMS_TO_TICKS(2000)))
+    {
+        gimbal_m6020[0].INS_speed_set = 0;
+    }
+    else
+    {
+        zero_speed_flag = 0; //
+    }
+    auto_aim_yaw_last = AutoAim_Data_Receive.yaw_aim;
+}
 void Yaw_Motor_Control(void)
 {
     static uint8_t yaw_mode = 0, yaw_mode_last = 0;
-    if (AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0)
+    if ((AutoAim_Data_Receive.yaw_aim != 0 || AutoAim_Data_Receive.pitch_aim != 0) && !AutoAim_Data_Receive.yaw_rotate_flag)
     {
         yaw_angle_err = angle_error_calc(AutoAim_Data_Receive.yaw_aim, gimbal_m6020[0].INS_angle);
-        PID_calc(&gimbal_m6020[0].auto_aim_pid, yaw_angle_err, 0);
-        gimbal_m6020[0].INS_speed_set = (-gimbal_m6020[0].auto_aim_pid.out) + (gimbal_m6020[0].INS_speed - gimbal_m6020[0].INS_speed_last) * YAW_MOTOR_AUTO_AIM_FF; // ??0.8?????yaw?????????
-        gimbal_m6020[0].INS_angle_set = AutoAim_Data_Receive.yaw_aim;
-        yaw_mode = yaw_mode_last = 1;
+        if (abs(yaw_angle_err) < 100.0f)
+        {
+            PID_calc(&gimbal_m6020[0].auto_aim_pid, yaw_angle_err, 0);
+            gimbal_m6020[0].INS_speed_set = (-gimbal_m6020[0].auto_aim_pid.out) + (gimbal_m6020[0].INS_speed - gimbal_m6020[0].INS_speed_last) * YAW_MOTOR_AUTO_AIM_FF; // ??0.8?????yaw?????????
+            gimbal_m6020[0].INS_angle_set = AutoAim_Data_Receive.yaw_aim;
+            yaw_mode = yaw_mode_last = 1;
+        }
     }
-
-    // ????????????
     else if (rc_ctrl.rc.s[1] == RC_SW_MID)
     {
         yaw_mode_last = yaw_mode;
@@ -156,28 +187,28 @@ void Yaw_Motor_Control(void)
     }
     else if (rc_ctrl.rc.s[1] == RC_SW_UP) // ??????yaw?????
     {
-        static uint32_t zero_speed_start_time = 0;
-        static uint8_t zero_speed_flag = 0;
-
-        if (AutoAim_Data_Receive.yaw_aim == 0 && auto_aim_yaw_last != 0)
+        if (AutoAim_Data_Receive.yaw_rotate_flag == 1) // 背后相机检测到目标，需要转180度，使用另一套位置pid防止超调
         {
-            zero_speed_start_time = xTaskGetTickCount();
-            zero_speed_flag = 1;
-        }
-        if (zero_speed_flag && (xTaskGetTickCount() - zero_speed_start_time <= pdMS_TO_TICKS(2000)))
-        {
-            gimbal_m6020[0].INS_speed_set = 0;
+            yaw_angle_err = angle_error_calc(AutoAim_Data_Receive.yaw_aim, gimbal_m6020[0].INS_angle);
+            PID_calc(&gimbal_m6020[0].angle_pid, yaw_angle_err, 0);
+            gimbal_m6020[0].INS_speed_set = -gimbal_m6020[0].angle_pid.out;
+            PID_calc(&gimbal_m6020[0].speed_pid, gimbal_m6020[0].INS_speed, gimbal_m6020[0].INS_speed_set);
+            gimbal_m6020[0].give_current = gimbal_m6020[0].speed_pid.out;
+            return;
         }
         else
         {
-            zero_speed_flag = 0; //
-            gimbal_m6020[0].INS_speed_set = AutoAim_Data_Receive.yaw_speed * RAD_TO_ANGLE;
+            gimbal_m6020[0].INS_speed_set = AutoAim_Data_Receive.yaw_speed * RAD_TO_ANGLE; // 导航模式下yaw轴正常巡逻
+            // Check_Yaw_LostTarget_Wait();
         }
     }
-
     PID_calc(&gimbal_m6020[0].speed_pid, gimbal_m6020[0].INS_speed, gimbal_m6020[0].INS_speed_set);
     gimbal_m6020[0].give_current = gimbal_m6020[0].speed_pid.out;
-    auto_aim_yaw_last = AutoAim_Data_Receive.yaw_aim;
+}
+
+fp32 Pitch_Gravity_Compensation(void)
+{
+    return PITCH_MOTOR_GRAVITY_DYNAMIC_COMPENSATE * arm_sin_f32(DM_pitch_motor_data.INS_angle / 57.3) + PITCH_MOTOR_GRAVITY_STATIC_COMPENSATE;
 }
 
 void Pitch_Motor_Control(void)
@@ -247,7 +278,7 @@ void Pitch_Motor_Control(void)
         }
     }
     PID_calc(&DM_pitch_motor_data.speed_pid, DM_pitch_motor_data.INS_speed, DM_pitch_motor_data.INS_speed_set);
-    DM_pitch_motor_data.target_current = -DM_pitch_motor_data.speed_pid.out + PITCH_MOTOR_GRAVITY_COMPENSATE;
+    DM_pitch_motor_data.target_current = -DM_pitch_motor_data.speed_pid.out + Pitch_Gravity_Compensation();
 }
 
 float Pitch_Updown(void)
@@ -256,7 +287,7 @@ float Pitch_Updown(void)
     static uint8_t updown_switch_flag = 0;
     uint8_t speed_state = AutoAim_Data_Receive.pitch_speed ? 1 : 0;
 
-    const PitchSwingParams swing_params[2] = {{-10.0f, 20.0f, 0.05f}, {-24.0f, -15.0f, 0.025f}};
+    const PitchSwingParams swing_params[2] = {{-10.0f, 25.0f, 0.06f}, {-24.0f, -15.0f, 0.04f}};
 
     if (updown_switch_flag == 0)
     {
@@ -279,13 +310,13 @@ float Pitch_Updown(void)
     return auto_pitch_watch;
 }
 
-void DM_Auto_Enable()
+void Check_DM_Auto_Enable()
 {
     static uint8_t enable_send_count = 0;
     static uint8_t gimbal_output_last = 0;
     if (Game_Robot_State.power_management_gimbal_output && !gimbal_output_last)
     {
-        enable_send_count = 5; // ???????
+        enable_send_count = 5;
         HAL_Delay(1000);
     }
     gimbal_output_last = Game_Robot_State.power_management_gimbal_output;
@@ -300,17 +331,14 @@ void DM_Auto_Enable()
 void Gimbal_Task(void const *argument)
 {
     Gimbal_Motor_Init();
-    rc_ctrl.rc.s[1] = RC_SW_DOWN;
-    HAL_Delay(1200);
     enable_DM(DM4310_ID, 0x01);
-
+		rc_ctrl.rc.s[1] = RC_SW_DOWN;
     vTaskDelay(200);
 
     while (1)
     {
-        DM_Auto_Enable();
+        Check_DM_Auto_Enable();
         Gimbal_Motor_Data_Update();
-
         //	angle_calculate();
 
         Yaw_Motor_Control();
@@ -334,107 +362,4 @@ void Gimbal_Task(void const *argument)
         //		Vofa_Send_Data4((float)DM_pitch_motor_data.INS_angle_set,(float)DM_pitch_motor_data.INS_angle,DM_pitch_motor_data.INS_speed,DM_pitch_motor_data.INS_speed_set);
         vTaskDelay(1);
     }
-}
-
-/*********************************************************DM*********************************************************/
-#define KP_MIN 0.0f
-#define KP_MAX 500.0f
-#define KD_MIN 0.0f
-#define KD_MAX 50.0f
-#define POS_MIN -12.5f
-#define POS_MAX 12.5f
-#define SPD_MIN -18.0f
-#define SPD_MAX 18.0f
-#define T_MIN -30.0f
-#define T_MAX 30.0f
-#define I_MIN -30.0f
-#define I_MAX 30.0f
-
-void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can1
-{
-    uint8_t TX_Data[8];
-    uint32_t send_mail_box;
-    CAN_TxHeaderTypeDef Tx_Msg;
-
-    // uint8_t *pbuf,*vbuf;
-    Tx_Msg.StdId = id;         // set chassis motor current.
-    Tx_Msg.IDE = CAN_ID_STD;   // ?????????????
-    Tx_Msg.RTR = CAN_RTR_DATA; // ?????????????????8??
-    Tx_Msg.DLC = 8;
-
-    uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
-    pos_tmp = float_to_uint(_pos, -12.5, 12.5, 16);
-    vel_tmp = float_to_uint(_vel, -45, 45, 12);
-    kp_tmp = float_to_uint(_KP, KP_MIN, KP_MAX, 12);
-    kd_tmp = float_to_uint(_KD, KD_MIN, KD_MAX, 12);
-    tor_tmp = float_to_uint(_torq, T_MIN, T_MAX, 12);
-
-    TX_Data[0] = (pos_tmp >> 8);
-    TX_Data[1] = pos_tmp;
-    TX_Data[2] = (vel_tmp >> 4);
-    TX_Data[3] = ((vel_tmp & 0xF) << 4) | (kp_tmp >> 8);
-    TX_Data[4] = kp_tmp;
-    TX_Data[5] = (kd_tmp >> 4);
-    TX_Data[6] = ((kd_tmp & 0xF) << 4) | (tor_tmp >> 8);
-    TX_Data[7] = tor_tmp;
-
-    HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
-}
-
-void enable_DM(uint8_t id, uint8_t ctrl_mode)
-{
-    uint8_t TX_Data[8];
-    uint32_t send_mail_box;
-    CAN_TxHeaderTypeDef Tx_Msg;
-
-    if (ctrl_mode == 1)
-        Tx_Msg.StdId = 0x000 + DM4310_ID; // set chassis motor current.
-    else if (ctrl_mode == 2)
-        Tx_Msg.StdId = 0x100 + DM4310_ID; // set chassis motor current.
-    else if (ctrl_mode == 3)
-        Tx_Msg.StdId = 0x200 + DM4310_ID; // set chassis motor current.
-    Tx_Msg.IDE = CAN_ID_STD;
-    Tx_Msg.RTR = CAN_RTR_DATA;
-    Tx_Msg.DLC = 8;
-
-    TX_Data[0] = 0xff;
-    TX_Data[1] = 0xff;
-    TX_Data[2] = 0xff;
-    TX_Data[3] = 0xff;
-    TX_Data[4] = 0xff;
-    TX_Data[5] = 0xff;
-    TX_Data[6] = 0xff;
-    TX_Data[7] = 0xfc;
-
-    HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
-}
-
-// ????????
-void disable_DM(uint8_t id, uint8_t ctrl_mode)
-{
-    uint8_t TX_Data[8];
-    uint32_t send_mail_box;
-    CAN_TxHeaderTypeDef Tx_Msg;
-
-    if (ctrl_mode == 1)
-        Tx_Msg.StdId = 0x000 + DM4310_ID; // set chassis motor current.
-    else if (ctrl_mode == 2)
-        Tx_Msg.StdId = 0x100 + DM4310_ID; // set chassis motor current.
-    else if (ctrl_mode == 3)
-        Tx_Msg.StdId = 0x200 + DM4310_ID; // set chassis motor current.
-
-    Tx_Msg.IDE = CAN_ID_STD;
-    Tx_Msg.RTR = CAN_RTR_DATA;
-    Tx_Msg.DLC = 8;
-
-    TX_Data[0] = 0xff;
-    TX_Data[1] = 0xff;
-    TX_Data[2] = 0xff;
-    TX_Data[3] = 0xff;
-    TX_Data[4] = 0xff;
-    TX_Data[5] = 0xff;
-    TX_Data[6] = 0xff;
-    TX_Data[7] = 0xfd;
-
-    HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
 }

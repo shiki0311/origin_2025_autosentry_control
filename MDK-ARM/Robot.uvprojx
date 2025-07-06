@@ -474,24 +474,9 @@
               <FilePath>..\Robot\Tasks\referee_usart_task.c</FilePath>
             </File>
             <File>
-              <FileName>Switch_Task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\Tasks\Switch_Task.c</FilePath>
-            </File>
-            <File>
               <FileName>Chassis_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\Tasks\Chassis_Task.c</FilePath>
-            </File>
-            <File>
-              <FileName>Nmanifold_usbd_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\Tasks\Nmanifold_usbd_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>Nmanifold_usbd_task.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Robot\Tasks\Nmanifold_usbd_task.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -524,9 +509,9 @@
               <FilePath>..\Robot\App\Vofa_send.c</FilePath>
             </File>
             <File>
-              <FileName>DM_motor_support.c</FileName>
+              <FileName>Cboard_To_Nuc_usbd_communication.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Robot\App\DM_motor_support.c</FilePath>
+              <FilePath>..\Robot\App\Cboard_To_Nuc_usbd_communication.c</FilePath>
             </File>
           </Files>
         </Group>

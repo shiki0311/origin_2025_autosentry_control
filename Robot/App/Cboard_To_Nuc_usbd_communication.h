@@ -11,6 +11,7 @@
 #include "arm_math.h"
 
 #include "usbd_cdc_if.h"
+
 /****************************************���������?********************************************/
 #define USBD_RX_BUF_LENGHT APP_RX_DATA_SIZE
 #define USBD_TX_BUF_LENGHT APP_TX_DATA_SIZE
@@ -37,26 +38,9 @@
 
 #define LENGTH_CHASSIS_GIMBAL_ANGLE 4 // ���͵���������?�Ƕȣ���->�ϣ����ڱ�ר�ã�
 #define LENGTH_CHASSIS_DATA_TX 24	  // �ϴ��������ټ����ݣ���->�ϣ����ڱ�ר�ã�
-#define LENGTH_REFEREE_DATA_TX 48	  // ���;�����Ҫ������ ���ڱ�ר�ã�
+#define LENGTH_REFEREE_DATA_TX 49	  // ���;�����Ҫ������ ���ڱ�ר�ã�
 // #define LENGTH_move_cmd_DATA_RX    20      //���������������ݣ���->�£����ڱ�ר�ã� û�õ�
 #define LENGTH_NUC_DATA_RX 69 //	���������������ݣ���->�£����ڱ�ר�ã� ��nuc���ݴ�����£�����������?
-
-// ����ģʽ
-#define AUTOAIM_MODE_NORMAL 0x00	   // ����ģʽ����ͨ
-#define AUTOAIM_MODE_SMALL_ENERGY 0x01 // ����ģʽ��С��������
-#define AUTOAIM_MODE_BIG_ENERGY 0x02   // ����ģʽ������������
-#define AUTOAIM_MODE_ANTI_TOP 0x03	   // ����ģʽ����С����
-
-// ����װ��
-#define AUTOAIM_ARMOR_AUTO 0x00	 // ����װ�ף��Զ�
-#define AUTOAIM_ARMOR_SMALL 0x04 // ����װ�ף�Сװ��ģ��
-#define AUTOAIM_ARMOR_BIG 0x08	 // ����װ�ף���װ��ģ��
-
-// ���뿪��
-#define SWITCH_OFF 1				 // ������
-#define SWITCH_ON 2					 // �з�������ɫ����
-#define ENEMY_INFANTRY_ARMOR_SMALL 0 // �з�����װ�ף�Сװ��
-#define ENEMY_INFANTRY_ARMOR_BIG 1	 // �з�����װ�ף���װ��
 
 /*******************************************END**********************************************/
 
@@ -75,33 +59,9 @@ typedef struct
 	float Yaw;	 // ��ǰyaw���㣩
 	float Pitch; // ��ǰpitch���㣩
 	float Roll;	 // ��ǰRoll���㣩
-	//	uint8_t Bullet_Speed;				//�ӵ����٣�m/s��
-	// uint8_t Robot_Team_Color;			//������������������?
+				 //	uint8_t Bullet_Speed;				//�ӵ����٣�m/s��
+				 // uint8_t Robot_Team_Color;			//������������������?
 } __attribute__((__packed__)) AutoAim_Data_Tx;
-
-typedef struct
-{
-	float x;  // ǰ�������ݣ�m��
-	float y;  // �������ݣ�m��
-	float z;  // ��ʱ�뷽�����ݣ�m��
-	float vx; // ǰ�����ٶ�(m/s)
-	float vy; // �����ٶ�(m/s)
-	float wz; // ��ʱ��ת���ٶ�(rad/s)
-	// uint8_t Robot_Team_Color;		//������������������?
-} __attribute__((__packed__)) Chassis_Data_Tx;
-
-typedef struct
-{
-	float chassis_follow_gimbal_angle;
-} __attribute__((__packed__)) Chassis_Gimbal_Angle_TX; // ͨ��Э��������ǰ������
-
-typedef uint8_t Working_Mode; // ����ģʽ
-
-typedef struct
-{
-	uint8_t Switch_off;							// �Ƿ����ò��뿪�� 1�����ã�2����
-	uint8_t Infantry_Armor[3];					// ����Ϊ�з�3��4��5�Ų�����װ�����ͣ�0:Сװ�ף�1:��װ�ף�
-} __attribute__((__packed__)) Dial_Switch_Data; // ���뿪��
 
 typedef struct
 {
@@ -132,6 +92,7 @@ typedef struct
 	uint32_t rfid_status; // rfidɨ������
 	uint32_t event_data;
 	uint8_t hurt_reason;
+	uint8_t enemy_hero_position;
 
 } __attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
@@ -150,6 +111,7 @@ typedef struct
 	float yaw_speed;
 	float pitch_speed;
 	bool_t uphill_flag;
+	bool_t yaw_rotate_flag;
 } __attribute__((__packed__)) AutoAim_Data_Rx;
 
 /*******************************************END**********************************************/
@@ -158,16 +120,14 @@ typedef struct
 
 // ����ӿ�?
 extern AutoAim_Data_Rx AutoAim_Data_Receive;
-extern Chassis_Data_Tx Chassis_Data_Tramsit;
-extern uint8_t Autoaim_Mode, Autoaim_Armor;
 extern uint8_t Referee_Buffer[2][512];
 extern uint16_t LENTH_REFEREE_BUF;
-extern Dial_Switch_Data Dial_Switch;
 
 // ��������
 uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len);
 uint8_t NUC_Data_Unpack(void);
 void NUC_USBD_Tx(uint8_t cmdid);
+void NUC_TX_IRQCallback(TIM_HandleTypeDef *htim);
 uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len);
 
 // 8λ�汾CRC��

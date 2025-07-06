@@ -11,7 +11,21 @@
 			"gimbal_task.h": "c",
 			"struct_typedef.h": "c",
 			"chassis_task.h": "c",
-			"freertos.h": "c"
+			"freertos.h": "c",
+			"bsp_buzzer.h": "c",
+			"ins_task.h": "c",
+			"nmanifold_usbd_task.h": "c",
+			"referee.h": "c",
+			"usb_device.h": "c",
+			"switch_task.h": "c",
+			"user_common_lib.h": "c",
+			"cmsis_os.h": "c",
+			"stm32f4xx.h": "c",
+			"tim.h": "c",
+			"main.h": "c",
+			"stm32f4xx_hal.h": "c",
+			"stm32f4xx_hal_conf.h": "c",
+			"referee_usart_task.h": "c"
 		},
 		"files.encoding": "gb2312"
 	}

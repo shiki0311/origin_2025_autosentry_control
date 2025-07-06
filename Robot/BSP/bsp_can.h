@@ -45,7 +45,7 @@ typedef struct
 
 	uint16_t target_pos;
 	int16_t target_vel;
-	int16_t target_current;
+	float target_current;
 	fp32 INS_speed;
 	fp32 INS_speed_set;
 	fp32 INS_speed_last;
@@ -92,5 +92,8 @@ void CAN_Cap_CMD(float data1, float data2, float data3, float data4);
 void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
+void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq);
+void enable_DM(uint8_t id, uint8_t ctrl_mode);
+void disable_DM(uint8_t id, uint8_t ctrl_mode);
 
 #endif

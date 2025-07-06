@@ -1,14 +1,16 @@
 #ifndef BSP_BUZZER_H
 #define BSP_BUZZER_H
 #include "struct_typedef.h"
-extern void buzzer_on(uint16_t psc, uint16_t pwm);
-extern void buzzer_off(void);
 
 typedef struct {
     uint16_t freq;  
-    uint16_t duration; // æŒç»­æ—¶é—´ï¼ˆmsï¼‰
+    uint16_t duration; // ³ÖĞøÊ±¼ä£¨ms£©
+		uint16_t pwm;
+	
 } Melody_TypeDef;
 
-extern void buzzer_play_maomao(void);
+void buzzer_play_mao();
+void buzzer_play_eva();
+
 
 #endif

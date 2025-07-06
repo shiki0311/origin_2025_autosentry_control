@@ -18,6 +18,7 @@
 #define T_MIN -30.0f
 #define T_MAX 30.0f
 #define DM4310_RecID 0x00
+
 #define get_motor_measure(ptr, data)                                   \
 	{                                                                  \
 		(ptr)->last_ecd = (ptr)->ecd;                                  \
@@ -38,6 +39,7 @@ uint32_t id = 0;
 int32_t dial_angle = 0;
 CAN_RxHeaderTypeDef rx_header;
 CAN_RxHeaderTypeDef rx_header2;
+
 void can_filter_init(void)
 {
 	CAN_FilterTypeDef can_filter_st;
@@ -122,7 +124,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 			DM_pitch_motor_data.p_int = (rx_data2[1] << 8) | rx_data2[2];
 			DM_pitch_motor_data.v_int = (rx_data2[3] << 4) | (rx_data2[4] >> 4);
 			DM_pitch_motor_data.t_int = ((rx_data2[4] & 0xF) << 8) | rx_data2[5];
-			DM_pitch_motor_data.pos = uint_to_float(DM_pitch_motor_data.p_int, P_MIN, P_MAX, 16) * 57.3248408; // (-3.1415926,3.1415926)
+			DM_pitch_motor_data.pos = uint_to_float(DM_pitch_motor_data.p_int, -12.5, 12.5, 16) * 57.3248408; // (-3.1415926,3.1415926)
 			DM_pitch_motor_data.vel = uint_to_float(DM_pitch_motor_data.v_int, V_MIN, V_MAX, 12);
 			DM_pitch_motor_data.toq = uint_to_float(DM_pitch_motor_data.t_int, T_MIN, T_MAX, 12); // (-18.0,18.0)
 			DM_pitch_motor_data.Tmos = (float)(rx_data2[6]);
@@ -153,6 +155,92 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		}
 		}
 	}
+}
+void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can2
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	Tx_Msg.StdId = id;
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
+	pos_tmp = float_to_uint(_pos, -12.5, 12.5, 16);
+	vel_tmp = float_to_uint(_vel, -45, 45, 12);
+	kp_tmp = float_to_uint(_KP, KP_MIN, KP_MAX, 12);
+	kd_tmp = float_to_uint(_KD, KD_MIN, KD_MAX, 12);
+	tor_tmp = float_to_uint(_torq, T_MIN, T_MAX, 12);
+
+	TX_Data[0] = (pos_tmp >> 8);
+	TX_Data[1] = pos_tmp;
+	TX_Data[2] = (vel_tmp >> 4);
+	TX_Data[3] = ((vel_tmp & 0xF) << 4) | (kp_tmp >> 8);
+	TX_Data[4] = kp_tmp;
+	TX_Data[5] = (kd_tmp >> 4);
+	TX_Data[6] = ((kd_tmp & 0xF) << 4) | (tor_tmp >> 8);
+	TX_Data[7] = tor_tmp;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
+}
+
+void enable_DM(uint8_t id, uint8_t ctrl_mode)
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	if (ctrl_mode == 1)
+		Tx_Msg.StdId = 0x000 + DM4310_ID;
+	else if (ctrl_mode == 2)
+		Tx_Msg.StdId = 0x100 + DM4310_ID;
+	else if (ctrl_mode == 3)
+		Tx_Msg.StdId = 0x200 + DM4310_ID;
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	TX_Data[0] = 0xff;
+	TX_Data[1] = 0xff;
+	TX_Data[2] = 0xff;
+	TX_Data[3] = 0xff;
+	TX_Data[4] = 0xff;
+	TX_Data[5] = 0xff;
+	TX_Data[6] = 0xff;
+	TX_Data[7] = 0xfc;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
+}
+
+void disable_DM(uint8_t id, uint8_t ctrl_mode)
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	if (ctrl_mode == 1)
+		Tx_Msg.StdId = 0x000 + DM4310_ID;
+	else if (ctrl_mode == 2)
+		Tx_Msg.StdId = 0x100 + DM4310_ID;
+	else if (ctrl_mode == 3)
+		Tx_Msg.StdId = 0x200 + DM4310_ID;
+
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	TX_Data[0] = 0xff;
+	TX_Data[1] = 0xff;
+	TX_Data[2] = 0xff;
+	TX_Data[3] = 0xff;
+	TX_Data[4] = 0xff;
+	TX_Data[5] = 0xff;
+	TX_Data[6] = 0xff;
+	TX_Data[7] = 0xfd;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
 }
 
 void CAN_TxQueue_Init()

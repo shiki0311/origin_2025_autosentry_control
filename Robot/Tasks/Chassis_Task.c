@@ -15,7 +15,7 @@
 #include "arm_math.h"
 #include "referee.h"
 #include "bsp_cap.h"
-#include "Nmanifold_usbd_task.h"
+#include "Cboard_To_Nuc_usbd_communication.h"
 #include "detect_task.h"
 #include "user_common_lib.h"
 
@@ -27,10 +27,10 @@
 #define ROTATE_WZ_MAX 22000
 #define ROTATE_WZ_MIN -10000
 #define ROTATE_WEAK 0.3f
-#define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 4450
-#define CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO 6498
-#define CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO 2402
-#define CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO 8544
+#define CHASSIS_FOLLOW_GIMBAL_ANGLE_BACK_ZERO 4450
+#define CHASSIS_FOLLOW_GIMBAL_ANGLE_RIGHT_ZERO 6498
+#define CHASSIS_FOLLOW_GIMBAL_ANGLE_LEFT_ZERO 2402
+#define CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO 8544
 #define NO_JUDGE_TOTAL_CURRENT_LIMIT 64000.0f
 #define BUFFER_TOTAL_CURRENT_LIMIT 30000.0f
 #define POWER_TOTAL_CURRENT_LIMIT 30000.0f
@@ -42,9 +42,9 @@
 #define M3505_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define M3505_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
 
-#define CHASSIS_FOLLOW_GIMBAL_PID_KP 360.0f
-#define CHASSIS_FOLLOW_GIMBAL_PID_KI 0.0f
-#define CHASSIS_FOLLOW_GIMBAL_PID_KD 200.0f
+#define CHASSIS_FOLLOW_GIMBAL_PID_KP 320.0f
+#define CHASSIS_FOLLOW_GIMBAL_PID_KI 0.002f
+#define CHASSIS_FOLLOW_GIMBAL_PID_KD 50.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT 20000.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT 1500.0f
 
@@ -71,6 +71,7 @@ health_state_t health_state = HEALTH_NORMAL;
 chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
 chassis_motor_t chassis_m3508[4] = {0};
 chassis_control_t chassis_control = {0};
+chassis_real_speed_t chassis_real_speed;
 const fp32 factor[3] = {1.54, 1.54, 1.54};
 /*************************************************************/
 
@@ -159,7 +160,7 @@ static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
 	bool_t nav_rotate = ((AutoAim_Data_Receive.rotate != 0) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 	bool_t nav_safe = ((Game_Status.game_progress != 4) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 
-	if (rc_ctrl_safe || nav_safe)
+	if (rc_ctrl_safe)
 	{
 		*mode = SAFE; // 失能模式的优先级最高，需要优先判断
 	}
@@ -309,7 +310,7 @@ void Set_Chassis_VxVy(fp32 yaw_nearest_zero_rad, fp32 *chassis_vx, fp32 *chassis
 	fp32 sin_yaw = arm_sin_f32(yaw_nearest_zero_rad);
 	fp32 cos_yaw = arm_cos_f32(yaw_nearest_zero_rad);
 	// todo
-	if ((rc_ctrl.rc.s[1] == RC_SW_MID) && (rc_ctrl.rc.ch[4] < 500) && (rc_ctrl.rc.ch[4] > -500)) // 遥控器控制模式
+	if (rc_ctrl.rc.s[1] == RC_SW_MID) // 遥控器控制模式
 	{
 		vx = ramp_control(vx, rc_ctrl.rc.ch[2] * 9, 0.7f);
 		vy = ramp_control(vy, rc_ctrl.rc.ch[3] * 9, 0.7f);
@@ -399,9 +400,11 @@ void chassis_rotate_handler(void)
 void chassis_safe_handler(void)
 {
 	chassis_control.chassis_follow_gimbal_zerochange = TRUE; // 进入失能模式当前底盘零点可能会切换，模式切换到底盘跟随云台后需要重新寻找零点
+	chassis_control.chassis_follow_gimbal_pid.Iout = 0;		 // 清零iout，防止积分饱和
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		chassis_m3508[i].give_current = 0;
+		chassis_m3508[i].pid.Iout = 0; // 清零iout，防止积分饱和
 	}
 }
 
@@ -427,9 +430,9 @@ void chassis_vector_set(chassis_mode_t mode)
 extern fp32 INS_angle[3];
 void chassis_feedback_update(void)
 {
-	Chassis_Data_Tramsit.vy = (-chassis_m3508[0].speed + chassis_m3508[1].speed + chassis_m3508[2].speed - chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
-	Chassis_Data_Tramsit.vx = (-chassis_m3508[0].speed - chassis_m3508[1].speed + chassis_m3508[2].speed + chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
-	Chassis_Data_Tramsit.wz = (-chassis_m3508[0].speed - chassis_m3508[1].speed - chassis_m3508[2].speed - chassis_m3508[3].speed) * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+	chassis_real_speed.vy = (-chassis_m3508[0].speed + chassis_m3508[1].speed + chassis_m3508[2].speed - chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+	chassis_real_speed.vx = (-chassis_m3508[0].speed - chassis_m3508[1].speed + chassis_m3508[2].speed + chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
+	chassis_real_speed.wz = (-chassis_m3508[0].speed - chassis_m3508[1].speed - chassis_m3508[2].speed - chassis_m3508[3].speed) * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
 }
 
 void Chassis_Task(void const *argument)
@@ -438,7 +441,7 @@ void Chassis_Task(void const *argument)
 
 	vTaskDelay(200);
 
-	static chassis_mode_t chassis_mode;
+	static chassis_mode_t chassis_mode = SAFE;
 	while (1)
 	{
 		chassis_mode = Chassis_Mode_Update(&chassis_mode);

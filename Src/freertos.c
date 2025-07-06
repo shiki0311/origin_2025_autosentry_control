@@ -58,9 +58,7 @@ osThreadId LED_TASKHandle;
 osThreadId Chassis_TASKHandle;
 osThreadId Gimbal_TASKHandle;
 osThreadId Shoot_TASKHandle;
-osThreadId manifold_usbdHandle;
 osThreadId referee_usartHandle;
-osThreadId SWITCH_TASKHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -72,9 +70,7 @@ void LED_Task(void const * argument);
 void Chassis_Task(void const * argument);
 void Gimbal_Task(void const * argument);
 void Shoot_Task(void const * argument);
-void manifold_usbd_task(void const * argument);
 void referee_usart_task(void const * argument);
-void Switch_Task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -158,17 +154,9 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(Shoot_TASK, Shoot_Task, osPriorityNormal, 0, 512);
   Shoot_TASKHandle = osThreadCreate(osThread(Shoot_TASK), NULL);
 
-  /* definition and creation of manifold_usbd */
-  osThreadDef(manifold_usbd, manifold_usbd_task, osPriorityBelowNormal, 0, 512);
-  manifold_usbdHandle = osThreadCreate(osThread(manifold_usbd), NULL);
-
   /* definition and creation of referee_usart */
   osThreadDef(referee_usart, referee_usart_task, osPriorityAboveNormal, 0, 256);
   referee_usartHandle = osThreadCreate(osThread(referee_usart), NULL);
-
-  /* definition and creation of SWITCH_TASK */
-  osThreadDef(SWITCH_TASK, Switch_Task, osPriorityNormal, 0, 128);
-  SWITCH_TASKHandle = osThreadCreate(osThread(SWITCH_TASK), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -268,24 +256,6 @@ __weak void Shoot_Task(void const * argument)
   /* USER CODE END Shoot_Task */
 }
 
-/* USER CODE BEGIN Header_manifold_usbd_task */
-/**
-* @brief Function implementing the manifold_usbd thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_manifold_usbd_task */
-__weak void manifold_usbd_task(void const * argument)
-{
-  /* USER CODE BEGIN manifold_usbd_task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END manifold_usbd_task */
-}
-
 /* USER CODE BEGIN Header_referee_usart_task */
 /**
 * @brief Function implementing the referee_usart thread.
@@ -302,24 +272,6 @@ __weak void referee_usart_task(void const * argument)
     osDelay(1);
   }
   /* USER CODE END referee_usart_task */
-}
-
-/* USER CODE BEGIN Header_Switch_Task */
-/**
-* @brief Function implementing the SWITCH_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_Switch_Task */
-__weak void Switch_Task(void const * argument)
-{
-  /* USER CODE BEGIN Switch_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END Switch_Task */
 }
 
 /* Private application code --------------------------------------------------*/

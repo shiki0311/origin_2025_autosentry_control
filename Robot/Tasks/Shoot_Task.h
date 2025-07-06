@@ -28,23 +28,10 @@ typedef struct
 	pid_type_def angle_pid;
 } shoot_motor_t;
 
-typedef struct
-{
-	fp32 speed;
-	fp32 speed_set;
-	int16_t give_pwm;
-
-	pid_type_def pid;
-} fric_motor_t;
-
 extern shoot_motor_t shoot_motor_3508[2];
 extern shoot_motor_t shoot_m2006[2];
 extern uint8_t fric_state;
-extern uint8_t dial_mode; // mode:0 continue,1 single;
-extern uint16_t shoot_flag, shoot_cnt, safe_flag;
-extern uint16_t fric_speed;
-extern uint8_t if_single_hit;
-extern int16_t dial_speed;
+extern uint16_t shoot_flag;
 void Fric_PWR(uint8_t power);
 void Shoot_Task(void const *argument);
 

@@ -49,7 +49,7 @@
  */
 
 /******************************************************************************
- * @file    user_common_lib.c
+ * @file    user_common_lib.h
  * @author  Shiki
  * @version V1.0.0
  * @date    2025.6.18
@@ -64,5 +64,6 @@ float limit(float data, float min, float max);
 float ramp_control(float ref, float set, float accel);
 float uint_to_float(int x_int, float x_min, float x_max, int bits);
 int float_to_uint(float x, float x_min, float x_max, int bits);
-
+int my_sign(float value);
+float my_fabsf(float x);
 #endif

@@ -112,3 +112,35 @@ int float_to_uint(float x, float x_min, float x_max, int bits)
     float offset = x_min;
     return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
 }
+
+// 判断符号位
+int my_sign(float value)
+{
+    if (value >= 0.0f)
+    {
+        return 1;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+/**
+ * @brief 自定义浮点数绝对值函数(高效实现)
+ * @param x 需要计算绝对值的浮点数
+ * @return x的绝对值
+ */
+float my_fabsf(float x)
+{
+    union
+    {
+        float f;
+        unsigned int u;
+    } converter;
+
+    converter.f = x;
+    // 清除符号位(第31位)
+    converter.u &= 0x7FFFFFFF;
+    return converter.f;
+}
