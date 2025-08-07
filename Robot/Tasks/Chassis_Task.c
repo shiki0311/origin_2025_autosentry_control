@@ -9,7 +9,6 @@
 #include "Gimbal_Task.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "can.h"
 #include "remote_control.h"
 #include "bsp_can.h"
 #include "arm_math.h"
@@ -19,11 +18,6 @@
 #include "detect_task.h"
 #include "user_common_lib.h"
 
-#define NORMAL_VX_MAX 4000
-#define NORMAL_VY_MAX 4000
-#define ROTATE_VX_MAX 3000
-#define ROTATE_VY_MAX 3000
-// #define ROTATE_WZ_MAX 25000
 #define ROTATE_WZ_MAX 22000
 #define ROTATE_WZ_MIN -10000
 #define ROTATE_WEAK 0.3f
@@ -38,7 +32,7 @@
 
 #define M3505_MOTOR_SPEED_PID_KP 10.0f
 #define M3505_MOTOR_SPEED_PID_KI 0.006f
-#define M3505_MOTOR_SPEED_PID_KD 0.0f
+#define M3505_MOTOR_SPEED_PID_KD 10.0f
 #define M3505_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define M3505_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
 
@@ -48,7 +42,7 @@
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_OUT 20000.0f
 #define CHASSIS_FOLLOW_GIMBAL_PID_MAX_IOUT 1500.0f
 
-#define ROTATE_MOVE_FF 0.012f // 小陀螺模式下的
+#define ROTATE_MOVE_FF 0.012f // 小陀螺模式下的前馈系数
 
 #define NAV_SPEED_FAST 800.0f // 导航发过来的速度乘以的系数，非上坡用
 #define NAV_SPEED_SLOW 400.0f // 导航发过来的速度乘以的系数，非上坡用
@@ -65,17 +59,22 @@ const fp32 k2 = 1.453e-07; // k2
 const fp32 constant = 4.081f;
 /*****************************************************/
 
+/****************************底盘模式处理函数声明，原因是使用函数名给函数指针赋值之前，该函数必须已经被声明***************************************/
+void chassis_follow_gimbal_handler(void);
+void chassis_rotate_handler(void);
+void chassis_safe_handler(void);
 /************************全局变量及常量区*****************************/
-chassis_command_t chassis_commands[] = {{FOLLOW_GIMBAL, chassis_follow_gimbal_handler}, {ROTATE, chassis_rotate_handler}, {SAFE, chassis_safe_handler}}; // 初始化底盘控制命令数组
+chassis_command_t chassis_commands[] = {{FOLLOW_GIMBAL, chassis_follow_gimbal_handler}, {ROTATE, chassis_rotate_handler}, {CHASSIS_SAFE, chassis_safe_handler}}; // 初始化底盘控制命令数组
 health_state_t health_state = HEALTH_NORMAL;
 chassis_max_power_control_t chassis_max_power_control_flag = NAV_NORMAL_MODE;
 chassis_motor_t chassis_m3508[4] = {0};
 chassis_control_t chassis_control = {0};
 chassis_real_speed_t chassis_real_speed;
 const fp32 factor[3] = {1.54, 1.54, 1.54};
-/*************************************************************/
+chassis_mode_t chassis_mode = CHASSIS_SAFE;
+/*******************************************************************/
 
-static void Chassis_Motor_Init(void)
+static void Chassis_Motor_Pid_Init(void)
 {
 	const static fp32 motor_speed_pid[3] = {M3505_MOTOR_SPEED_PID_KP, M3505_MOTOR_SPEED_PID_KI, M3505_MOTOR_SPEED_PID_KD};
 	const static fp32 chassis_follow_gimbal_pid[3] = {CHASSIS_FOLLOW_GIMBAL_PID_KP, CHASSIS_FOLLOW_GIMBAL_PID_KI, CHASSIS_FOLLOW_GIMBAL_PID_KD};
@@ -151,7 +150,11 @@ static void Chassis_Max_Power_Update(void) // 根据不同模式选择不同底盘功率上限
 	}
 }
 
-static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
+/**
+ * @description: 更新底盘模式
+ * @return 底盘当前模式
+ */
+static chassis_mode_t Chassis_Mode_Update()
 {
 	bool_t rc_ctrl_follow_gimbal = ((rc_ctrl.rc.s[1] == RC_SW_MID) && (rc_ctrl.rc.ch[4] < 500) && (rc_ctrl.rc.ch[4] > -500)); // 是否满足遥控器控制时底盘跟随云台模式，下面以此类推
 	bool_t rc_ctrl_rotate = ((rc_ctrl.rc.s[1] == RC_SW_MID) && !rc_ctrl_follow_gimbal);
@@ -160,19 +163,18 @@ static chassis_mode_t Chassis_Mode_Update(chassis_mode_t *mode)
 	bool_t nav_rotate = ((AutoAim_Data_Receive.rotate != 0) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 	bool_t nav_safe = ((Game_Status.game_progress != 4) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 
-	if (rc_ctrl_safe)
+	if (rc_ctrl_safe || nav_safe)
 	{
-		*mode = SAFE; // 失能模式的优先级最高，需要优先判断
+		return CHASSIS_SAFE; // 失能模式的优先级最高，需要优先判断
 	}
 	else if (rc_ctrl_rotate || nav_rotate)
 	{
-		*mode = ROTATE;
+		return ROTATE;
 	}
 	else if (rc_ctrl_follow_gimbal || nav_follow_gimbal)
 	{
-		*mode = FOLLOW_GIMBAL;
+		return FOLLOW_GIMBAL;
 	}
-	return *mode;
 }
 
 static void Health_Monitor_Update(void)
@@ -263,7 +265,7 @@ void power_control()
 
 static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 vy_set, const fp32 wz_set, fp32 *wheel0, fp32 *wheel1, fp32 *wheel2, fp32 *wheel3, chassis_mode_t mode)
 {
-	if (wheel0 == NULL || wheel1 == NULL || wheel2 == NULL || wheel3 == NULL || mode == SAFE)
+	if (wheel0 == NULL || wheel1 == NULL || wheel2 == NULL || wheel3 == NULL || mode == CHASSIS_SAFE)
 	{
 		return;
 	}
@@ -278,7 +280,7 @@ static void chassis_vector_to_mecanum_wheel_speed(const fp32 vx_set, const fp32 
  */
 static void chassis_motor_current_set(chassis_mode_t mode)
 {
-	if (mode == SAFE)
+	if (mode == CHASSIS_SAFE)
 		return;
 	for (uint8_t i = 0; i < 4; i++)
 	{
@@ -437,14 +439,14 @@ void chassis_feedback_update(void)
 
 void Chassis_Task(void const *argument)
 {
-	Chassis_Motor_Init();
+	Chassis_Motor_Pid_Init();
 
 	vTaskDelay(200);
 
-	static chassis_mode_t chassis_mode = SAFE;
+	chassis_mode = CHASSIS_SAFE;
 	while (1)
 	{
-		chassis_mode = Chassis_Mode_Update(&chassis_mode);
+		chassis_mode = Chassis_Mode_Update();
 		Chassis_Motor_Data_Update();
 		Chassis_Max_Power_Update();
 		Health_Monitor_Update();

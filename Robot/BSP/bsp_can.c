@@ -1,9 +1,14 @@
+/*****************************************************************************************************************************
+ * @file: bsp_can.c
+ * @author: Shiki
+ * @date: 2025.7.12
+ * @brief:	哨兵2025赛季CAN总线支持包，实现不同task和电机的CAN接收和发送函数.
+
+ *****************************************************************************************************************************/
+
 #include "bsp_can.h"
 #include "bsp_cap.h"
 #include "main.h"
-#include "Chassis_Task.h"
-#include "Gimbal_Task.h"
-#include "Shoot_Task.h"
 #include "detect_task.h"
 #include "user_common_lib.h"
 
@@ -17,7 +22,24 @@
 #define KD_MAX 5.0f
 #define T_MIN -30.0f
 #define T_MAX 30.0f
+
 #define DM4310_RecID 0x00
+#define CAN_6020_YAW_ID 0x205
+#define CAN_GIMBAL_ALL_ID 0x1FF
+
+#define CAN_CAP_TX_ID 0x140
+#define CAN_CAP_RX_ID 0x130
+
+#define CAN_3508_CHASSIS_MOTOR1_ID 0x201
+#define CAN_3508_CHASSIS_MOTOR2_ID 0x202
+#define CAN_3508_CHASSIS_MOTOR3_ID 0x203
+#define CAN_3508_CHASSIS_MOTOR4_ID 0x204
+#define CAN_CHASSIS_ALL_ID 0x200
+
+#define CAN_3508_FRIC_MOTOR1_ID 0x207
+#define CAN_3508_FRIC_MOTOR2_ID 0x208
+#define CAN_2006_DIAL_MOTOR_ID 0x206
+#define CAN_SHOOT_ALL_ID 0x1FF
 
 #define get_motor_measure(ptr, data)                                   \
 	{                                                                  \
@@ -28,17 +50,13 @@
 		(ptr)->temperate = (data)[6];                                  \
 	}
 
-uint8_t rx_data2[8];
-uint8_t rx_data[8];
 motor_measure_t motor_measure_chassis[4];
 motor_measure_t motor_measure_gimbal[2];
 motor_measure_t motor_measure_shoot[3];
 DM_motor_data_t DM_pitch_motor_data = {0};
 CanTxQueueTypeDef can_tx_queue;
-uint32_t id = 0;
 int32_t dial_angle = 0;
-CAN_RxHeaderTypeDef rx_header;
-CAN_RxHeaderTypeDef rx_header2;
+CAN_RxHeaderTypeDef rx_header; // debug用，看can接收正不正常
 
 void can_filter_init(void)
 {
@@ -64,24 +82,23 @@ void can_filter_init(void)
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
+/*********************************************CAN接收函数*********************************************************************/
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
+	uint8_t rx_data[8];
 	if (hcan == &hcan1)
 	{
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data);
 
-		if (rx_header.StdId != CAN_3508_M1_ID && rx_header.StdId != CAN_3508_M2_ID && rx_header.StdId != CAN_3508_M3_ID && rx_header.StdId != CAN_3508_M4_ID)
-			id = rx_header.StdId;
-
 		switch (rx_header.StdId)
 		{
-		case CAN_3508_M1_ID:
-		case CAN_3508_M2_ID:
-		case CAN_3508_M3_ID:
-		case CAN_3508_M4_ID:
+		case CAN_3508_CHASSIS_MOTOR1_ID:
+		case CAN_3508_CHASSIS_MOTOR2_ID:
+		case CAN_3508_CHASSIS_MOTOR3_ID:
+		case CAN_3508_CHASSIS_MOTOR4_ID:
 		{
 			static uint8_t i = 0;
-			i = rx_header.StdId - CAN_3508_M1_ID;
+			i = rx_header.StdId - CAN_3508_CHASSIS_MOTOR1_ID;
 			get_motor_measure(&motor_measure_chassis[i], rx_data);
 			int16_t temp1 = motor_measure_chassis[i].ecd - motor_measure_chassis[i].last_ecd;
 			int16_t temp2 = temp1 + (temp1 < 0 ? 8192 : -8192);
@@ -90,10 +107,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 			break;
 		}
-		case CAN_6020_M1_ID:
+		case CAN_6020_YAW_ID:
 		{
 			static uint8_t i = 0;
-			i = rx_header.StdId - CAN_6020_M1_ID;
+			i = rx_header.StdId - CAN_6020_YAW_ID;
 
 			get_motor_measure(&motor_measure_gimbal[i], rx_data);
 
@@ -114,27 +131,27 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	}
 	if (hcan == &hcan2)
 	{
-		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header2, rx_data2);
-		switch (rx_header2.StdId)
+		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data);
+		switch (rx_header.StdId)
 		{
 		case DM4310_RecID:
 		{
-			DM_pitch_motor_data.id = (rx_data2[0]) & 0x0F;
-			DM_pitch_motor_data.state = (rx_data2[0]) >> 4;
-			DM_pitch_motor_data.p_int = (rx_data2[1] << 8) | rx_data2[2];
-			DM_pitch_motor_data.v_int = (rx_data2[3] << 4) | (rx_data2[4] >> 4);
-			DM_pitch_motor_data.t_int = ((rx_data2[4] & 0xF) << 8) | rx_data2[5];
+			DM_pitch_motor_data.id = (rx_data[0]) & 0x0F;
+			DM_pitch_motor_data.state = (rx_data[0]) >> 4;
+			DM_pitch_motor_data.p_int = (rx_data[1] << 8) | rx_data[2];
+			DM_pitch_motor_data.v_int = (rx_data[3] << 4) | (rx_data[4] >> 4);
+			DM_pitch_motor_data.t_int = ((rx_data[4] & 0xF) << 8) | rx_data[5];
 			DM_pitch_motor_data.pos = uint_to_float(DM_pitch_motor_data.p_int, -12.5, 12.5, 16) * 57.3248408; // (-3.1415926,3.1415926)
 			DM_pitch_motor_data.vel = uint_to_float(DM_pitch_motor_data.v_int, V_MIN, V_MAX, 12);
 			DM_pitch_motor_data.toq = uint_to_float(DM_pitch_motor_data.t_int, T_MIN, T_MAX, 12); // (-18.0,18.0)
-			DM_pitch_motor_data.Tmos = (float)(rx_data2[6]);
-			DM_pitch_motor_data.Tcoil = (float)(rx_data2[7]);
+			DM_pitch_motor_data.Tmos = (float)(rx_data[6]);
+			DM_pitch_motor_data.Tcoil = (float)(rx_data[7]);
 
 			break;
 		}
-		case CAN_2006_M1_ID:
+		case CAN_2006_DIAL_MOTOR_ID:
 		{
-			get_motor_measure(&motor_measure_shoot[2], rx_data2);
+			get_motor_measure(&motor_measure_shoot[2], rx_data);
 			if (motor_measure_shoot[2].ecd - motor_measure_shoot[2].last_ecd > 4096)
 				dial_angle += -8192 + motor_measure_shoot[2].ecd - motor_measure_shoot[2].last_ecd;
 			else if (motor_measure_shoot[2].ecd - motor_measure_shoot[2].last_ecd < -4096)
@@ -144,105 +161,20 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 			break;
 		}
-		case CAN_3508_M5_ID:
-		case CAN_3508_M6_ID:
+		case CAN_3508_FRIC_MOTOR1_ID:
+		case CAN_3508_FRIC_MOTOR2_ID:
 		{
 			static uint8_t i = 0;
-			i = rx_header2.StdId - CAN_3508_M5_ID;
+			i = rx_header.StdId - CAN_3508_FRIC_MOTOR1_ID;
 
-			get_motor_measure(&motor_measure_shoot[i], rx_data2);
+			get_motor_measure(&motor_measure_shoot[i], rx_data);
 			break;
 		}
 		}
 	}
 }
-void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can2
-{
-	uint8_t TX_Data[8];
-	uint32_t send_mail_box;
-	CAN_TxHeaderTypeDef Tx_Msg;
 
-	Tx_Msg.StdId = id;
-	Tx_Msg.IDE = CAN_ID_STD;
-	Tx_Msg.RTR = CAN_RTR_DATA;
-	Tx_Msg.DLC = 8;
-
-	uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
-	pos_tmp = float_to_uint(_pos, -12.5, 12.5, 16);
-	vel_tmp = float_to_uint(_vel, -45, 45, 12);
-	kp_tmp = float_to_uint(_KP, KP_MIN, KP_MAX, 12);
-	kd_tmp = float_to_uint(_KD, KD_MIN, KD_MAX, 12);
-	tor_tmp = float_to_uint(_torq, T_MIN, T_MAX, 12);
-
-	TX_Data[0] = (pos_tmp >> 8);
-	TX_Data[1] = pos_tmp;
-	TX_Data[2] = (vel_tmp >> 4);
-	TX_Data[3] = ((vel_tmp & 0xF) << 4) | (kp_tmp >> 8);
-	TX_Data[4] = kp_tmp;
-	TX_Data[5] = (kd_tmp >> 4);
-	TX_Data[6] = ((kd_tmp & 0xF) << 4) | (tor_tmp >> 8);
-	TX_Data[7] = tor_tmp;
-
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
-}
-
-void enable_DM(uint8_t id, uint8_t ctrl_mode)
-{
-	uint8_t TX_Data[8];
-	uint32_t send_mail_box;
-	CAN_TxHeaderTypeDef Tx_Msg;
-
-	if (ctrl_mode == 1)
-		Tx_Msg.StdId = 0x000 + DM4310_ID;
-	else if (ctrl_mode == 2)
-		Tx_Msg.StdId = 0x100 + DM4310_ID;
-	else if (ctrl_mode == 3)
-		Tx_Msg.StdId = 0x200 + DM4310_ID;
-	Tx_Msg.IDE = CAN_ID_STD;
-	Tx_Msg.RTR = CAN_RTR_DATA;
-	Tx_Msg.DLC = 8;
-
-	TX_Data[0] = 0xff;
-	TX_Data[1] = 0xff;
-	TX_Data[2] = 0xff;
-	TX_Data[3] = 0xff;
-	TX_Data[4] = 0xff;
-	TX_Data[5] = 0xff;
-	TX_Data[6] = 0xff;
-	TX_Data[7] = 0xfc;
-
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
-}
-
-void disable_DM(uint8_t id, uint8_t ctrl_mode)
-{
-	uint8_t TX_Data[8];
-	uint32_t send_mail_box;
-	CAN_TxHeaderTypeDef Tx_Msg;
-
-	if (ctrl_mode == 1)
-		Tx_Msg.StdId = 0x000 + DM4310_ID;
-	else if (ctrl_mode == 2)
-		Tx_Msg.StdId = 0x100 + DM4310_ID;
-	else if (ctrl_mode == 3)
-		Tx_Msg.StdId = 0x200 + DM4310_ID;
-
-	Tx_Msg.IDE = CAN_ID_STD;
-	Tx_Msg.RTR = CAN_RTR_DATA;
-	Tx_Msg.DLC = 8;
-
-	TX_Data[0] = 0xff;
-	TX_Data[1] = 0xff;
-	TX_Data[2] = 0xff;
-	TX_Data[3] = 0xff;
-	TX_Data[4] = 0xff;
-	TX_Data[5] = 0xff;
-	TX_Data[6] = 0xff;
-	TX_Data[7] = 0xfd;
-
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
-}
-
+/*********************************************CAN发送循环队列函数库，当一帧can消息发送失败就存入队列等待can邮箱空闲再发送************************************************************/
 void CAN_TxQueue_Init()
 {
 	memset(can_tx_queue.can_msg_buffer, 0, sizeof(can_tx_queue.can_msg_buffer));
@@ -317,6 +249,7 @@ void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 		Process_TxQueue(hcan);
 }
 
+/*********************************************************CAN发送函数************************************************************************/
 void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-16384,+16384
 {
 	CAN_TxHeaderTypeDef chassis_tx_message;
@@ -424,4 +357,91 @@ void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor
 	shoot_can_send_data[7] = motor4;
 
 	HAL_CAN_AddTxMessage(&SHOOT_CAN, &shoot_tx_message, shoot_can_send_data, &send_mail_box);
+}
+
+void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can2
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	Tx_Msg.StdId = id;
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
+	pos_tmp = float_to_uint(_pos, -12.5, 12.5, 16);
+	vel_tmp = float_to_uint(_vel, -45, 45, 12);
+	kp_tmp = float_to_uint(_KP, KP_MIN, KP_MAX, 12);
+	kd_tmp = float_to_uint(_KD, KD_MIN, KD_MAX, 12);
+	tor_tmp = float_to_uint(_torq, T_MIN, T_MAX, 12);
+
+	TX_Data[0] = (pos_tmp >> 8);
+	TX_Data[1] = pos_tmp;
+	TX_Data[2] = (vel_tmp >> 4);
+	TX_Data[3] = ((vel_tmp & 0xF) << 4) | (kp_tmp >> 8);
+	TX_Data[4] = kp_tmp;
+	TX_Data[5] = (kd_tmp >> 4);
+	TX_Data[6] = ((kd_tmp & 0xF) << 4) | (tor_tmp >> 8);
+	TX_Data[7] = tor_tmp;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
+}
+
+void enable_DM(uint8_t id, uint8_t ctrl_mode)
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	if (ctrl_mode == 1)
+		Tx_Msg.StdId = 0x000 + DM4310_SendID;
+	else if (ctrl_mode == 2)
+		Tx_Msg.StdId = 0x100 + DM4310_SendID;
+	else if (ctrl_mode == 3)
+		Tx_Msg.StdId = 0x200 + DM4310_SendID;
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	TX_Data[0] = 0xff;
+	TX_Data[1] = 0xff;
+	TX_Data[2] = 0xff;
+	TX_Data[3] = 0xff;
+	TX_Data[4] = 0xff;
+	TX_Data[5] = 0xff;
+	TX_Data[6] = 0xff;
+	TX_Data[7] = 0xfc;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
+}
+
+void disable_DM(uint8_t id, uint8_t ctrl_mode)
+{
+	uint8_t TX_Data[8];
+	uint32_t send_mail_box;
+	CAN_TxHeaderTypeDef Tx_Msg;
+
+	if (ctrl_mode == 1)
+		Tx_Msg.StdId = 0x000 + DM4310_SendID;
+	else if (ctrl_mode == 2)
+		Tx_Msg.StdId = 0x100 + DM4310_SendID;
+	else if (ctrl_mode == 3)
+		Tx_Msg.StdId = 0x200 + DM4310_SendID;
+
+	Tx_Msg.IDE = CAN_ID_STD;
+	Tx_Msg.RTR = CAN_RTR_DATA;
+	Tx_Msg.DLC = 8;
+
+	TX_Data[0] = 0xff;
+	TX_Data[1] = 0xff;
+	TX_Data[2] = 0xff;
+	TX_Data[3] = 0xff;
+	TX_Data[4] = 0xff;
+	TX_Data[5] = 0xff;
+	TX_Data[6] = 0xff;
+	TX_Data[7] = 0xfd;
+
+	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
 }

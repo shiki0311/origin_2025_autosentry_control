@@ -9,8 +9,8 @@ typedef struct {
 	
 } Melody_TypeDef;
 
-void buzzer_play_mao();
-void buzzer_play_eva();
+void buzzer_play_mao(void);
+void buzzer_play_eva(void);
 
 
 #endif

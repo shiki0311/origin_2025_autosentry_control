@@ -1,16 +1,22 @@
-/*
- * @file:
- * @author:
- * @date:
- * @brief:
- * @attention:
- */
+/*****************************************************************************************************************************
+ * @file: bsp_can.h
+ * @author: Shiki
+ * @date: 2025.7.12
+ * @brief:	哨兵2025赛季CAN总线支持包，除了不同task和电机的CAN接收和发送函数，此文件还定义了大疆电机can接收结构体和达妙电机结构体。
+
+ *****************************************************************************************************************************/
+
 #ifndef BSP_CAN_H
 #define BSP_CAN_H
 
 #include "struct_typedef.h"
 #include "pid.h"
 #include "can.h"
+
+#define SHOOT_CAN hcan2
+#define GIMBAL_CAN hcan1
+#define CHASSIS_CAN hcan1
+#define DM4310_SendID 0x01
 
 #define TX_QUEUE_SIZE 64
 
@@ -58,18 +64,14 @@ typedef struct
 
 } DM_motor_data_t;
 
-#pragma pack(pop) // 这行位置别改，pid.h里面我写注释的两行也别改
+#pragma pack(pop) // 这行位置别改，pid.h里面我写注释的两行也别改，不信你改了试试
 
-/**
- * can???????
- */
 typedef struct
 {
 	uint8_t data[8];
 	CAN_TxHeaderTypeDef tx_header;
 } CanTxMsgTypeDef;
 
-/* can??????н??? */
 typedef struct
 {
 	CanTxMsgTypeDef can_msg_buffer[TX_QUEUE_SIZE];

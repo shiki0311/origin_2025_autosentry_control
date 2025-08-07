@@ -6,6 +6,7 @@
 	],
 	"settings": {
 		"files.associations": {
+			"COMMIT_EDITMSG": "git-commit",
 			"bsp_can.h": "c",
 			"shoot_task.h": "c",
 			"gimbal_task.h": "c",
@@ -25,7 +26,11 @@
 			"main.h": "c",
 			"stm32f4xx_hal.h": "c",
 			"stm32f4xx_hal_conf.h": "c",
-			"referee_usart_task.h": "c"
+			"referee_usart_task.h": "c",
+			"usart.h": "c",
+			"cboard_to_nuc_usbd_communication.h": "c",
+			"detect_task.h": "c",
+			"bsp_cap.h": "c"
 		},
 		"files.encoding": "gb2312"
 	}

@@ -59,6 +59,7 @@ osThreadId Chassis_TASKHandle;
 osThreadId Gimbal_TASKHandle;
 osThreadId Shoot_TASKHandle;
 osThreadId referee_usartHandle;
+osThreadId Detect_TaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -71,6 +72,7 @@ void Chassis_Task(void const * argument);
 void Gimbal_Task(void const * argument);
 void Shoot_Task(void const * argument);
 void referee_usart_task(void const * argument);
+void detect_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -157,6 +159,10 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of referee_usart */
   osThreadDef(referee_usart, referee_usart_task, osPriorityAboveNormal, 0, 256);
   referee_usartHandle = osThreadCreate(osThread(referee_usart), NULL);
+
+  /* definition and creation of Detect_Task */
+  osThreadDef(Detect_Task, detect_task, osPriorityAboveNormal, 0, 256);
+  Detect_TaskHandle = osThreadCreate(osThread(Detect_Task), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -272,6 +278,24 @@ __weak void referee_usart_task(void const * argument)
     osDelay(1);
   }
   /* USER CODE END referee_usart_task */
+}
+
+/* USER CODE BEGIN Header_detect_task */
+/**
+* @brief Function implementing the Detect_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_detect_task */
+__weak void detect_task(void const * argument)
+{
+  /* USER CODE BEGIN detect_task */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END detect_task */
 }
 
 /* Private application code --------------------------------------------------*/

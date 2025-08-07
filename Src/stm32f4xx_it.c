@@ -284,9 +284,11 @@ void TIM1_UP_TIM10_IRQHandler(void)
   if ((htim1.Instance->DIER & (TIM_IT_UPDATE)) == (TIM_IT_UPDATE))
     __HAL_TIM_CLEAR_FLAG(&htim1, TIM_FLAG_UPDATE);
 
-  NUC_TX_IRQCallback(&htim1);
+  NUC_TX_Autoaim(&htim1);
   return;
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  HAL_TIM_IRQHandler(&htim10);
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
 }
@@ -344,9 +346,10 @@ void TIM8_UP_TIM13_IRQHandler(void)
   if ((htim8.Instance->DIER & (TIM_IT_UPDATE)) == (TIM_IT_UPDATE))
     __HAL_TIM_CLEAR_FLAG(&htim8, TIM_FLAG_UPDATE);
 
-  NUC_TX_IRQCallback(&htim8);
+  NUC_TX_Referee(&htim8);
   return;
   /* USER CODE END TIM8_UP_TIM13_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim8);
   /* USER CODE BEGIN TIM8_UP_TIM13_IRQn 1 */
 
   /* USER CODE END TIM8_UP_TIM13_IRQn 1 */

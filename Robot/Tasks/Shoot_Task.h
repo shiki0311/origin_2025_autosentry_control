@@ -4,15 +4,6 @@
 #include "main.h"
 #include "Gimbal_Task.h"
 
-#define CAN_SHOOT_ALL_ID 0x1FF
-#define CAN_2006_M1_ID 0x206
-// #define CAN_2006_M2_ID 0x202
-
-#define SHOOT_CAN hcan2
-
-#define CAN_3508_M5_ID 0x207 // Ħ����
-#define CAN_3508_M6_ID 0x208
-
 typedef struct
 {
 	fp32 speed;
@@ -30,9 +21,7 @@ typedef struct
 
 extern shoot_motor_t shoot_motor_3508[2];
 extern shoot_motor_t shoot_m2006[2];
-extern uint8_t fric_state;
-extern uint16_t shoot_flag;
-void Fric_PWR(uint8_t power);
+
 void Shoot_Task(void const *argument);
 
 #endif

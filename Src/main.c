@@ -65,54 +65,6 @@
 void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-char *itoa(int num, char *str, int radix)
-{
-  char index[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // ������
-  unsigned unum;                                         // ����?ת���������ľ���ֵ,ת�������������Ǹ���
-  int i = 0, j, k;                                       // i����ָʾ�����ַ�����Ӧλ��ת��֮��i��ʵ�����ַ����ĳ��ȣ�ת����˳��������ģ��������������k����ָʾ����˳��Ŀ�ʼλ��????;j����ָʾ����˳��ʱ�Ľ�����
-
-  // ��ȡҪת���������ľ���ֵ
-  if (radix == 10 && num < 0) // Ҫת����ʮ�����������Ǹ���
-  {
-    unum = (unsigned)-num; // ��num�ľ���ֵ����unum
-    str[i++] = '-';        // ���ַ�����ǰ������Ϊ'-'�ţ�����������1
-  }
-  else
-    unum = (unsigned)num; // ����numΪ����ֱ�Ӹ�ֵ��unum
-
-  // ת�����֣�ע��ת�����������????
-  do
-  {
-    str[i++] = index[unum % (unsigned)radix]; // ȡunum�����һλ��������Ϊstr��Ӧλ��ָʾ������1
-    unum /= radix;                            // unumȥ�����һ�?
-
-  } while (unum); // ֱ��unumΪ0�˳�ѭ��
-
-  str[i] = '\0'; // ���ַ���������'\0'�ַ���c�����ַ�����'\0'������
-
-  // ��˳���������????
-  if (str[0] == '-')
-    k = 1; // ����Ǹ��������Ų��õ������ӷ��ź���????ʼ����
-  else
-    k = 0; // ���Ǹ�����ȫ����Ҫ����
-
-  char temp;                         // ��ʱ��������������ֵʱ�õ�
-  for (j = k; j <= (i - 1) / 2; j++) // ͷβһһ�Գƽ�����i��ʵ�����ַ����ĳ��ȣ��������ֵ�ȳ�����????1
-  {
-    temp = str[j];               // ͷ����ֵ����ʱ����
-    str[j] = str[i - 1 + k - j]; // β����ֵ��ͷ��
-    str[i - 1 + k - j] = temp;   // ����ʱ������ֵ(��ʵ����֮ǰ��ͷ��ֵ)����β��
-  }
-
-  return str; // ����ת������ַ���????
-}
-
-void Transmit_float(UART_HandleTypeDef *huart, float *data)
-{
-  HAL_UART_Transmit(huart, (const uint8_t *)data, sizeof(float) * 4, 50);
-  uint8_t tail[4] = {0x00, 0x00, 0x80, 0x7f};
-  HAL_UART_Transmit(huart, tail, 4, 50);
-}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -133,7 +85,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+		HAL_Init();
 
   /* USER CODE BEGIN Init */
 

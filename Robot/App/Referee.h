@@ -125,7 +125,8 @@ extern "C"
 #define UI_DataID_Draw7 0x104	 // 客户端绘制7个图形
 #define UI_DataID_DrawChar 0x110 // 客户端绘制字符图形
 
-/* 雷达，哨兵自主决策cmdID */
+	/* 雷达，哨兵自主决策cmdID */
+#define SEND_TO_LIDAR 0x0202
 #define SENTRY_AUTO_SEND 0x0120
 #define LIDAR_AUTO_SEND 0x0121
 
@@ -306,18 +307,14 @@ extern "C"
 	} ext_sentry_info_t;
 
 	/* 0x030X --------------------------------------------------------------------*/
-	typedef __packed struct // 0x0301 机器人间通信结构体，包括数据头和数据
+	typedef __packed struct // 0x0301 机器人间通信结构体，包括数据头和数据,2025赛季数据来源为雷达
 	{
 		uint16_t data_cmd_id;
 		uint16_t sender_ID;
 		uint16_t receiver_ID;
 		uint8_t enemy_hero_position_data;
+		uint8_t check_defend_fortress;
 	} ext_student_interactive_data_t;
-
-	typedef __packed struct // 对别的机器人（2025赛季为雷达）发送过来的数据（即上一个结构体的uint8_t *data部分）进行解包后的结构体
-	{
-		uint8_t enemy_hero_position;
-	} ext_unpack_interactive_data_t;
 
 	typedef __packed struct // 0x0301 机器人间通信 头结构体
 	{
@@ -325,15 +322,17 @@ extern "C"
 		uint16_t sender_ID;
 		uint16_t receiver_ID;
 	} ext_student_interactive_header_data_t;
-	typedef __packed struct // 0x0301 机器人间通信 数据结构体
-	{
-		uint8_t *data;
-	} robot_interactive_data_t;
 
-	typedef __packed struct // 0x0301 机器人间通信 哨兵自主决策指令
+	typedef __packed struct // 0x0301 机器人间通信 哨兵自主决策指令（发送给裁判系统服务器)
 	{
 		uint32_t sentry_cmd_data;
 	} sentry_cmd_t;
+
+	typedef __packed struct // 0x0301 机器人间通信 哨兵与其他机器人通信指令，此为发送结构体（2025赛季为发送给雷达）
+	{
+		uint16_t bullet_remaining_num; // 哨兵剩余发弹量
+		uint8_t reach_enemy_hero;	   // 哨兵是否到达抓英雄的目标点位
+	} sentry_interactive_data_t;
 
 	typedef __packed struct // 0x0303 小地图下发信息标识
 	{
@@ -454,6 +453,15 @@ extern "C"
 		uint16_t CRC16;
 	} Sentry_Auto_Cmd_Send_t;
 
+	typedef __packed struct // 向雷达发送哨兵状态数据结构体
+	{
+		frame_header_struct_t Referee_Transmit_Header;
+		uint16_t CMD_ID;
+		ext_student_interactive_header_data_t Interactive_Header;
+		sentry_interactive_data_t sentry_interactive_data;
+		uint16_t CRC16;
+	} Sentry_Interactive_With_Liadr_t;
+
 #pragma pack(pop)
 	/* Structs -------------------------------------------------------------------*/
 	/* protocol包头结构体 */
@@ -482,7 +490,6 @@ extern "C"
 
 	/* 0x030X */
 	extern ext_student_interactive_data_t Student_Interactive_Data;
-	extern ext_unpack_interactive_data_t Unpack_Interactive_Data;
 	extern ext_robot_command_t Robot_Command;
 	extern ext_client_map_command_t Client_Map_Command;
 
@@ -496,6 +503,7 @@ extern "C"
 
 	/* 哨兵专用结构体 */
 	extern Sentry_Auto_Cmd_Send_t Sentry_Auto_Cmd_Send;
+	extern Sentry_Interactive_With_Liadr_t Sentry_Interactive_With_Liadr;
 
 	/* Functions -----------------------------------------------------------------*/
 	void Referee_StructInit(void);
@@ -505,6 +513,8 @@ extern "C"
 	void Referee_SolveFifoData(uint8_t *frame);
 
 	void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID);
+	void Sentry_To_Lidar_Cmd(Sentry_Interactive_With_Liadr_t *Sentry_Interactive_With_Lidar_Cmd, uint8_t RobotID);
+
 	void UI_Draw_Line(graphic_data_struct_t *Graph,		 // UI图形数据结构体指针
 					  char GraphName[3],				 // 图形名 作为客户端的索引
 					  uint8_t GraphOperate,				 // UI图形操作 对应UI_Graph_XXX的4种操作

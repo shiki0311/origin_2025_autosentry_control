@@ -18,6 +18,7 @@
 #include "usart.h"
 #include "fifo.h"
 #include "crcs.h"
+#include "Cboard_To_Nuc_usbd_communication.h"
 
 /* protocol包头结构体 */
 frame_header_struct_t Referee_Receive_Header;
@@ -46,7 +47,6 @@ ext_sentry_info_t Sentry_Info;
 
 /* 0x030X */
 ext_student_interactive_data_t Student_Interactive_Data;
-ext_unpack_interactive_data_t Unpack_Interactive_Data;
 ext_robot_command_t Robot_Command;
 ext_client_map_command_t Client_Map_Command;
 
@@ -60,7 +60,7 @@ UI_Delete_t UI_Delete;
 
 /* 哨兵专用结构体 */
 Sentry_Auto_Cmd_Send_t Sentry_Auto_Cmd_Send;
-
+Sentry_Interactive_With_Liadr_t Sentry_Interactive_With_Liadr;
 /* Functions -----------------------------------------------------------------*/
 /*==============================================================================
 			  ##### 裁判系统初始化函数 #####
@@ -307,7 +307,6 @@ void Referee_SolveFifoData(uint8_t *frame)
 		break;
 	case STUDENT_INTERACTIVE_DATA_CMD_ID:
 		memcpy(&Student_Interactive_Data, frame + index, sizeof(ext_student_interactive_data_t));
-		Unpack_Interactive_Data.enemy_hero_position = Student_Interactive_Data.enemy_hero_position_data;
 		break;
 	case ROBOT_COMMAND_CMD_ID:
 		memcpy(&Robot_Command, frame + index, sizeof(ext_robot_command_t));
@@ -323,6 +322,12 @@ void Referee_SolveFifoData(uint8_t *frame)
 /*==============================================================================
 			  ##### 哨兵自主决策发送函数 #####
   ==============================================================================*/
+/**
+ * @description: 向裁判系统请求复活
+ * @return {*}
+ * @param {Sentry_Auto_Cmd_Send_t} *Sentry_Auto_Cmd
+ * @param {uint8_t} RobotID
+ */
 void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 {
 	/* 填充 frame_header */
@@ -332,20 +337,51 @@ void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 	Sentry_Auto_Cmd->Referee_Transmit_Header.CRC8 = CRC08_Calculate((uint8_t *)(&Sentry_Auto_Cmd->Referee_Transmit_Header), 4);
 
 	/* 填充 cmd_id */
-	Sentry_Auto_Cmd->CMD_ID = STUDENT_INTERACTIVE_DATA_CMD_ID;
+	Sentry_Auto_Cmd->CMD_ID = STUDENT_INTERACTIVE_DATA_CMD_ID; // cmd id命令码
 
 	/* 填充 student_interactive_header */
-	Sentry_Auto_Cmd->Interactive_Header.data_cmd_id = SENTRY_AUTO_SEND;
-	Sentry_Auto_Cmd->Interactive_Header.sender_ID = RobotID;
-	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;
+	Sentry_Auto_Cmd->Interactive_Header.data_cmd_id = SENTRY_AUTO_SEND; // 子内容id
+	Sentry_Auto_Cmd->Interactive_Header.sender_ID = RobotID;			// 发送者ID
+	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;	// 接收者ID
 
 	/* 填充 sentry_cmd */
 	Sentry_Auto_Cmd->sentry_cmd.sentry_cmd_data = (uint32_t)0x00000001;
-	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2);
+	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 
 	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));
 }
 
+/**
+ * @description: 向雷达发送哨兵剩余发单量和是否到达抓英雄的目标点
+ * @return {*}
+ * @param {Sentry_Interactive_With_Liadr_t} *Sentry_Interactive_With_Lidar_Cmd
+ * @param {uint8_t} RobotID
+ */
+void Sentry_To_Lidar_Cmd(Sentry_Interactive_With_Liadr_t *Sentry_Interactive_With_Lidar_Cmd, uint8_t RobotID)
+{
+	/* 填充 frame_header */
+	Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header.SOF = HEADER_SOF;
+	Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header.data_length = 9;
+	Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header.seq = Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header.seq + 1;
+	Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header.CRC8 = CRC08_Calculate((uint8_t *)(&Sentry_Interactive_With_Lidar_Cmd->Referee_Transmit_Header), 4);
+
+	/* 填充 cmd_id */
+	Sentry_Interactive_With_Lidar_Cmd->CMD_ID = STUDENT_INTERACTIVE_DATA_CMD_ID; // cmd id命令码
+
+	/* 填充 student_interactive_header */
+	Sentry_Interactive_With_Lidar_Cmd->Interactive_Header.data_cmd_id = SEND_TO_LIDAR;																	// 子内容id
+	Sentry_Interactive_With_Lidar_Cmd->Interactive_Header.sender_ID = RobotID;																			// 发送者ID
+	Sentry_Interactive_With_Lidar_Cmd->Interactive_Header.receiver_ID = ((RobotID == Robot_ID_Blue_Sentry) ? Robot_ID_Blue_Radar : Robot_ID_Red_Radar); // 接收者ID
+
+	/* 填充 sentry_cmd */
+	Sentry_Interactive_With_Lidar_Cmd->sentry_interactive_data.bullet_remaining_num = Bullet_Remaining.bullet_remaining_num_17mm;
+	Sentry_Interactive_With_Lidar_Cmd->sentry_interactive_data.reach_enemy_hero = AutoAim_Data_Receive.ready_catch_hero;
+	//	Sentry_Interactive_With_Lidar_Cmd->sentry_interactive_data.bullet_remaining_num = 100;
+	//	Sentry_Interactive_With_Lidar_Cmd->sentry_interactive_data.reach_enemy_hero = 1;
+	Sentry_Interactive_With_Lidar_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Interactive_With_Lidar_Cmd, sizeof(Sentry_Interactive_With_Liadr_t) - 2); // frame_tail CRC16校验
+
+	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Interactive_With_Lidar_Cmd, sizeof(Sentry_Interactive_With_Liadr_t));
+}
 /*==============================================================================
 			  ##### UI基本图形绘制函数 #####
   ==============================================================================

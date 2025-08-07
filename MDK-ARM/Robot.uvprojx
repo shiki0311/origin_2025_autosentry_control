@@ -384,6 +384,11 @@
           <GroupName>Application/MDK-ARM</GroupName>
           <Files>
             <File>
+              <FileName>Cboard_To_Nuc_usbd_communication.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Robot\App\Cboard_To_Nuc_usbd_communication.c</FilePath>
+            </File>
+            <File>
               <FileName>startup_stm32f407xx.s</FileName>
               <FileType>2</FileType>
               <FilePath>startup_stm32f407xx.s</FilePath>
@@ -393,11 +398,6 @@
         <Group>
           <GroupName>BSP</GroupName>
           <Files>
-            <File>
-              <FileName>bsp_delay.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\BSP\bsp_delay.c</FilePath>
-            </File>
             <File>
               <FileName>bsp_imu_pwm.c</FileName>
               <FileType>1</FileType>
@@ -429,6 +429,11 @@
               <FilePath>..\Robot\BSP\bsp_usart.c</FilePath>
             </File>
             <File>
+              <FileName>bsp_delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Robot\BSP\bsp_delay.c</FilePath>
+            </File>
+            <File>
               <FileName>bsp_cap.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\BSP\bsp_cap.c</FilePath>
@@ -436,7 +441,7 @@
             <File>
               <FileName>bsp_buzzer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>D:\STM32入门教程资料\STM32入门教程资料\Development-Board-C-Examples-master\5.buzzer\bsp\boards\bsp_buzzer.c</FilePath>
+              <FilePath>..\Robot\BSP\bsp_buzzer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -459,11 +464,6 @@
               <FilePath>..\Robot\Tasks\LED_Task.c</FilePath>
             </File>
             <File>
-              <FileName>Gimbal_Task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\Tasks\Gimbal_Task.c</FilePath>
-            </File>
-            <File>
               <FileName>Shoot_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\Tasks\Shoot_Task.c</FilePath>
@@ -477,6 +477,11 @@
               <FileName>Chassis_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\Tasks\Chassis_Task.c</FilePath>
+            </File>
+            <File>
+              <FileName>Gimbal_Task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Robot\Tasks\Gimbal_Task.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -507,11 +512,6 @@
               <FileName>Vofa_send.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Robot\App\Vofa_send.c</FilePath>
-            </File>
-            <File>
-              <FileName>Cboard_To_Nuc_usbd_communication.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Robot\App\Cboard_To_Nuc_usbd_communication.c</FilePath>
             </File>
           </Files>
         </Group>
