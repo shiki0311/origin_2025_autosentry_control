@@ -1,2 +1,19 @@
-# sentry_C
-C Board code of autosentry
+# 起源战队2025赛季哨兵嵌入式部分代码
+
+## 分支说明
+
+------
+
+- developing分支为长期维护分支，预计在2025年会完成所有优化
+
+- rmuc_2025_07分支为复活赛上场版本代码
+- rmuc_2025_05分支为区域赛上场版本代码 
+
+------
+
+## 使用说明
+
+- 使用到的第三方库和应用层代码均位于Robot文件夹下
+- 点击origin_2025_autosentry_control-master.code-workspace文件即可用vscode打开此项目代码
+- 要了解项目最后实际部署到开发板上的代码请用keil打开MDK-ARM文件夹下的“Robot.uvguix.两仪式”文件（有许多文件还保留在仓库中但是实际并没有用上）
+
