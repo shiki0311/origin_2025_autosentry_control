@@ -1,2 +1,4 @@
-# sentry_C
-C Board code of autosentry
+# 起源战队2025赛季哨兵嵌入式部分代码
+developing分支为长期维护分支，预计在2025年会完成所有优化
+rmuc_2025_05分支为区域赛上场版本代码
+rmuc_2025_07分支为复活赛上场版本代码
