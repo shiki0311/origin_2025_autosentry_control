@@ -17,6 +17,9 @@
 #include "Cboard_To_Nuc_usbd_communication.h"
 #include "detect_task.h"
 #include "user_common_lib.h"
+#include "INS_Task.h"
+
+#define MOTOR_DISTANCE_TO_CENTER 0.231f // 245mm
 
 #define ROTATE_WZ_MAX 22000
 #define ROTATE_WZ_MIN -10000
@@ -51,6 +54,48 @@
 #define M3508_MOTOR_RPM_TO_VECTOR 0.03547934768011173503001388518321f
 //  rp->m
 #define M3508_MOTOR_ECD_TO_DISTANCE 0.00000415809748903494517209f
+
+/*************************中弹掉血切换小陀螺模式（2025赛季节省功率特供版）****************************/
+typedef enum
+{
+	HEALTH_NORMAL, // 正常模式
+	HEALTH_HURT	   // 受伤旋转模式
+} health_state_t;
+/*************************底盘功率上限枚举体，不同的值对应不同的底盘功率上限****************************/
+
+typedef enum
+{
+	REMOTE_CONTROL,
+	NAV_NORMAL_MODE,
+	HURT,
+	UPHILL_START,
+	ON_HILL
+} chassis_max_power_control_t;
+/*******************************************************************/
+
+/*************************底盘模式枚举体****************************/
+typedef enum
+{
+	FOLLOW_GIMBAL, // 底盘跟随云台移动模式
+	ROTATE,		   // 小陀螺移动模式
+	CHASSIS_SAFE   // 失能模式
+} chassis_mode_t;
+/*******************************************************************/
+
+/**********************在chassis_task.c中的全局变量及常量区定义底盘模式表，在不同的底盘模式下设置对应底盘控制逻辑***************************/
+typedef struct
+{
+	chassis_mode_t mode;   // 底盘模式
+	void (*handler)(void); // 不同底盘模式对应的处理函数
+} chassis_command_t;
+/*******************************************************************/
+typedef struct // 底盘真实速度结构体
+{
+	float vx; // (m/s)
+	float vy; // (m/s)
+	float wz; // (rad/s)
+
+} chassis_real_speed_t;  
 
 /********************电机功率控制参数**********************/
 const fp32 toque_coefficient = 1.99688994e-6f;
@@ -210,7 +255,7 @@ static void Health_Monitor_Update(void)
 	last_health = current_health;
 }
 
-void power_control()
+static void power_control()
 {
 	fp32 scaled_give_power[4];
 	fp32 initial_give_power[4];
@@ -289,7 +334,7 @@ static void chassis_motor_current_set(chassis_mode_t mode)
 	}
 }
 
-fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle)
+static fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle)
 {
 	float angle_front_err = Limit_To_180((float)(Target_Angle - CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO) / 8192.0f * 360.0f);
 
@@ -306,7 +351,7 @@ fp32 Angle_Z_Suit_ZERO_Get(fp32 Target_Angle)
 /**
  * @brief  以yaw轴朝向作为正方向设置底盘xy轴速度，在小陀螺模式和跟随云台模式下通用
  */
-void Set_Chassis_VxVy(fp32 yaw_nearest_zero_rad, fp32 *chassis_vx, fp32 *chassis_vy)
+static void Set_Chassis_VxVy(fp32 yaw_nearest_zero_rad, fp32 *chassis_vx, fp32 *chassis_vy)
 {
 	fp32 vx, vy;
 	fp32 sin_yaw = arm_sin_f32(yaw_nearest_zero_rad);
@@ -329,7 +374,7 @@ void Set_Chassis_VxVy(fp32 yaw_nearest_zero_rad, fp32 *chassis_vx, fp32 *chassis
 /**
  * @brief  设置底盘跟随云台时的底盘角速度，只在chassis_follow_gimbal_handler中调用
  */
-fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
+static fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
 {
 	PID_calc(&chassis_control.chassis_follow_gimbal_pid, follow_gimbal_angle, 0);
 	*wz = -chassis_control.chassis_follow_gimbal_pid.out;
@@ -339,7 +384,7 @@ fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
 /**
  * @brief  设置小陀螺时的底盘角速度，只在chassis_rotate_handler中调用
  */
-fp32 Set_Rotate_Wz(fp32 *wz)
+static fp32 Set_Rotate_Wz(fp32 *wz)
 {
 	// todo
 	if (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.ch[4] <= -500)
@@ -366,7 +411,7 @@ fp32 Set_Rotate_Wz(fp32 *wz)
 /**
  * @brief  跟随云台模式下的控制函数，在控制函数中解算出以yaw轴朝向为正方向的机器人x y轴速度和角速度wz
  */
-void chassis_follow_gimbal_handler(void)
+static void chassis_follow_gimbal_handler(void)
 {
 	static fp32 chassis_follow_gimbal_zero_actual = CHASSIS_FOLLOW_GIMBAL_ANGLE_ZERO;
 
@@ -385,7 +430,7 @@ void chassis_follow_gimbal_handler(void)
 /**
  * @brief  小陀螺模式下的控制函数，在控制函数中解算出以yaw轴朝向为正方向的机器人x y轴速度和角速度wz
  */
-void chassis_rotate_handler(void)
+static void chassis_rotate_handler(void)
 {
 	chassis_control.chassis_follow_gimbal_zerochange = TRUE; // 进入小陀螺模式当前底盘零点会切换
 
@@ -399,7 +444,7 @@ void chassis_rotate_handler(void)
 /**
  * @brief  失能模式下的控制函数，对底盘电机电流置零
  */
-void chassis_safe_handler(void)
+static void chassis_safe_handler(void)
 {
 	chassis_control.chassis_follow_gimbal_zerochange = TRUE; // 进入失能模式当前底盘零点可能会切换，模式切换到底盘跟随云台后需要重新寻找零点
 	chassis_control.chassis_follow_gimbal_pid.Iout = 0;		 // 清零iout，防止积分饱和
@@ -416,7 +461,7 @@ void chassis_safe_handler(void)
  * 				 2.失能模式下，直接对底盘电机电流值赋0，在task的while(1)中后续调用chassis_motor_current_set函数和chassis_vector_to_mecanum_wheel_speed函数时会直接返回
  *         综上：在小陀螺模式和底盘跟随模式下xy轴速度解算调用同一函数 Set_Chassis_VxVy（），角速度解算调用不同函数
  */
-void chassis_vector_set(chassis_mode_t mode)
+static void chassis_vector_set(chassis_mode_t mode)
 {
 	int size = sizeof(chassis_commands) / sizeof(chassis_command_t);
 	for (int i = 0; i < size; i++) // 寻找匹配当前模式的控制函数
@@ -429,8 +474,7 @@ void chassis_vector_set(chassis_mode_t mode)
 	}
 }
 
-extern fp32 INS_angle[3];
-void chassis_feedback_update(void)
+static void chassis_feedback_update(void)
 {
 	chassis_real_speed.vy = (-chassis_m3508[0].speed + chassis_m3508[1].speed + chassis_m3508[2].speed - chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
 	chassis_real_speed.vx = (-chassis_m3508[0].speed - chassis_m3508[1].speed + chassis_m3508[2].speed + chassis_m3508[3].speed) * 0.70710678f * M3508_MOTOR_RPM_TO_VECTOR / 4.0f;
