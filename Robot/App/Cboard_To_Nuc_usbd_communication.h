@@ -38,7 +38,7 @@
 
 #define LENGTH_CHASSIS_GIMBAL_ANGLE 4 // ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì?ï¿½Ç¶È£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
 #define LENGTH_CHASSIS_DATA_TX 24	  // ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¼ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define LENGTH_REFEREE_DATA_TX 49	  // ï¿½ï¿½ï¿½Í¾ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
+#define LENGTH_REFEREE_DATA_TX 50	  // ï¿½ï¿½ï¿½Í¾ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
 // #define LENGTH_move_cmd_DATA_RX    20      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ Ã»ï¿½Ãµï¿½
 #define LENGTH_NUC_DATA_RX 69 //	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ ï¿½ï¿½nucï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£?
 
@@ -93,7 +93,7 @@ typedef struct
 	uint32_t event_data;
 	uint8_t hurt_reason;
 	uint8_t enemy_hero_position;
-
+	bool_t defend_fortress; // ÊÇ·ñÒª»Ø·ÀÈëÇÖÎÒ·½±¤ÀÝµÄµÐÈË
 } __attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
 
@@ -112,6 +112,7 @@ typedef struct
 	float pitch_speed;
 	bool_t uphill_flag;
 	bool_t yaw_rotate_flag;
+	bool_t ready_catch_hero; // ÊÇ·ñµ½´ï×¥Ó¢ÐÛµÄµãÎ»
 } __attribute__((__packed__)) AutoAim_Data_Rx;
 
 /*******************************************END**********************************************/
@@ -122,13 +123,12 @@ typedef struct
 extern AutoAim_Data_Rx AutoAim_Data_Receive;
 extern uint8_t Referee_Buffer[2][512];
 extern uint16_t LENTH_REFEREE_BUF;
-
+extern uint8_t yaw_rotate_flag_last; // ¼ÇÂ¼ÉÏÒ»´ÎµÄyaw_rotate_flag£¬ÓÃÓÚÅÐ¶Ïµ±Ç°ÊÇ²»ÊÇ¸Õ¸ÕÍË³ö´ó»Ø»·Ä£Ê½
 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len);
-uint8_t NUC_Data_Unpack(void);
-void NUC_USBD_Tx(uint8_t cmdid);
-void NUC_TX_IRQCallback(TIM_HandleTypeDef *htim);
-uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len);
+void NUC_TX_Referee(TIM_HandleTypeDef *htim);
+void NUC_TX_Autoaim(TIM_HandleTypeDef *htim);
+	uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len);
 
 // 8Î»ï¿½æ±¾CRCï¿½ï¿½
 static const uint8_t CRC08_Table[256] = {

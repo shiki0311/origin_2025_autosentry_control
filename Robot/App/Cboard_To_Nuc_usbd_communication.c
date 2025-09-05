@@ -36,56 +36,16 @@
 #include "usbd_cdc_if.h"
 
 uint8_t RX_Lenth_Total = 0;
+uint8_t yaw_rotate_flag_last = 0;
 uint8_t USBD_Buf[2][USBD_RX_BUF_LENGHT], NUC_USBD_RxBuf[USBD_RX_BUF_LENGHT], NUC_USBD_TxBuf[USBD_TX_BUF_LENGHT];
 
 AutoAim_Data_Tx AutoAim_Data_Transmit;
 AutoAim_Data_Rx AutoAim_Data_Receive;
 Referee_Data_Tx Referee_Data_Tramsit;
 
-/**
- * @description: 定时器定时周期完成时调用的回调函数，TIM1用于每5ms向NUC发送一次陀螺仪数据，TIM8用于每100ms向NUC发送一次裁判系统数据，在stm32f4xx_it.c中的tim中断处理函数中调用
- * @return 无
- * @param {TIM_HandleTypeDef} *htim
- */
-void NUC_TX_IRQCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim1)
-	{
-		// 5ms trigger
-		NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX);
-	}
-	else if (htim == &htim8)
-	{
-		// 100ms trigger
-		HAL_TIM_Base_Stop_IT(&htim1);
-		NUC_USBD_Tx(CMD_ID_REFEREE_DATA_TX);
-		HAL_TIM_Base_Start_IT(&htim1);
-	}
-}
-
-uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len)
-{
-	memcpy(NUC_USBD_RxBuf + RX_Lenth_Total, Buf, Len);
-	if (NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128) // 锟揭诧拷锟角憋拷识锟斤拷锟斤拷锟斤拷识锟斤拷锟斤拷锟斤拷0xAA锟酵凤拷锟斤拷1
-		return 1;
-	RX_Lenth_Total = Len + RX_Lenth_Total;
-
-	if (NUC_USBD_RxBuf[1] == RX_Lenth_Total) // 锟斤拷锟斤拷校锟介，锟斤拷校锟斤拷呓锟斤拷锟??
-	{
-		NUC_Data_Unpack(); // 锟斤拷锟捷斤拷锟??
-		//				CDC_Transmit_FS(NUC_USBD_RxBuf, RX_Lenth_Total);
-		RX_Lenth_Total = 0;
-	}
-
-	if (NUC_USBD_RxBuf[1] < RX_Lenth_Total)
-	{
-		RX_Lenth_Total = 0;
-		return 1;
-	}
-}
-
 uint8_t NUC_Data_Unpack(void)
 {
+	yaw_rotate_flag_last = AutoAim_Data_Receive.yaw_rotate_flag;
 	switch (NUC_USBD_RxBuf[2])
 	{
 	case CMD_ID_AUTOAIM_DATA_RX:
@@ -152,6 +112,7 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Referee_Data_Tramsit.event_data = Event_Data.event_type;
 		Referee_Data_Tramsit.hurt_reason = Robot_Hurt.hurt_type;
 		Referee_Data_Tramsit.enemy_hero_position = Student_Interactive_Data.enemy_hero_position_data;
+		Referee_Data_Tramsit.defend_fortress = Student_Interactive_Data.check_defend_fortress;
 		memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
 
 		NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 3);
@@ -160,6 +121,44 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		break;
 	default:
 		return;
+	}
+}
+
+/**
+ * @description: 定时器定时周期完成时调用的回调函数，TIM1用于每5ms向NUC发送一次陀螺仪数据，TIM8用于每100ms向NUC发送一次裁判系统数据，在stm32f4xx_it.c中的tim中断处理函数中调用
+ * @return 无
+ * @param {TIM_HandleTypeDef} *htim
+ */
+void NUC_TX_Referee(TIM_HandleTypeDef *htim)
+{
+	// 100ms trigger
+	NUC_USBD_Tx(CMD_ID_REFEREE_DATA_TX);
+}
+
+void NUC_TX_Autoaim(TIM_HandleTypeDef *htim)
+{
+	// 5ms trigger
+	NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX);
+}
+
+uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len)
+{
+	memcpy(NUC_USBD_RxBuf + RX_Lenth_Total, Buf, Len);
+	if (NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128) // 锟揭诧拷锟角憋拷识锟斤拷锟斤拷锟斤拷识锟斤拷锟斤拷锟斤拷0xAA锟酵凤拷锟斤拷1
+		return 1;
+	RX_Lenth_Total = Len + RX_Lenth_Total;
+
+	if (NUC_USBD_RxBuf[1] == RX_Lenth_Total) // 锟斤拷锟斤拷校锟介，锟斤拷校锟斤拷呓锟斤拷锟??
+	{
+		NUC_Data_Unpack(); // 锟斤拷锟捷斤拷锟??
+		//				CDC_Transmit_FS(NUC_USBD_RxBuf, RX_Lenth_Total);
+		RX_Lenth_Total = 0;
+	}
+
+	if (NUC_USBD_RxBuf[1] < RX_Lenth_Total)
+	{
+		RX_Lenth_Total = 0;
+		return 1;
 	}
 }
 
