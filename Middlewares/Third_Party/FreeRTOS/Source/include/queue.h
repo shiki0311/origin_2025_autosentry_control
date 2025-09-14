@@ -1215,216 +1215,216 @@ uint32_t ulVarToSend, ulValReceived;
  */
 #define xQueueSendFromISR( xQueue, pvItemToQueue, pxHigherPriorityTaskWoken ) xQueueGenericSendFromISR( ( xQueue ), ( pvItemToQueue ), ( pxHigherPriorityTaskWoken ), queueSEND_TO_BACK )
 
-/**
- * queue. h
- * <pre>
- BaseType_t xQueueGenericSendFromISR(
-										   QueueHandle_t		xQueue,
-										   const	void	*pvItemToQueue,
-										   BaseType_t	*pxHigherPriorityTaskWoken,
-										   BaseType_t	xCopyPosition
+	/**
+	 * queue. h
+	 * <pre>
+	 BaseType_t xQueueGenericSendFromISR(
+											   QueueHandle_t		xQueue,
+											   const	void	*pvItemToQueue,
+											   BaseType_t	*pxHigherPriorityTaskWoken,
+											   BaseType_t	xCopyPosition
+										   );
+	 </pre>
+	 *
+	 * It is preferred that the macros xQueueSendFromISR(),
+	 * xQueueSendToFrontFromISR() and xQueueSendToBackFromISR() be used in place
+	 * of calling this function directly.  xQueueGiveFromISR() is an
+	 * equivalent for use by semaphores that don't actually copy any data.
+	 *
+	 * Post an item on a queue.  It is safe to use this function from within an
+	 * interrupt service routine.
+	 *
+	 * Items are queued by copy not reference so it is preferable to only
+	 * queue small items, especially when called from an ISR.  In most cases
+	 * it would be preferable to store a pointer to the item being queued.
+	 *
+	 * @param xQueue The handle to the queue on which the item is to be posted.
+	 *
+	 * @param pvItemToQueue A pointer to the item that is to be placed on the
+	 * queue.  The size of the items the queue will hold was defined when the
+	 * queue was created, so this many bytes will be copied from pvItemToQueue
+	 * into the queue storage area.
+	 *
+	 * @param pxHigherPriorityTaskWoken xQueueGenericSendFromISR() will set
+	 * *pxHigherPriorityTaskWoken to pdTRUE if sending to the queue caused a task
+	 * to unblock, and the unblocked task has a priority higher than the currently
+	 * running task.  If xQueueGenericSendFromISR() sets this value to pdTRUE then
+	 * a context switch should be requested before the interrupt is exited.
+	 *
+	 * @param xCopyPosition Can take the value queueSEND_TO_BACK to place the
+	 * item at the back of the queue, or queueSEND_TO_FRONT to place the item
+	 * at the front of the queue (for high priority messages).
+	 *
+	 * @return pdTRUE if the data was successfully sent to the queue, otherwise
+	 * errQUEUE_FULL.
+	 *
+	 * Example usage for buffered IO (where the ISR can obtain more than one value
+	 * per call):
+	   <pre>
+	 void vBufferISR( void )
+	 {
+	 char cIn;
+	 BaseType_t xHigherPriorityTaskWokenByPost;
+
+		// We have not woken a task at the start of the ISR.
+		xHigherPriorityTaskWokenByPost = pdFALSE;
+
+		// Loop until the buffer is empty.
+		do
+		{
+			// Obtain a byte from the buffer.
+			cIn = portINPUT_BYTE( RX_REGISTER_ADDRESS );
+
+			// Post each byte.
+			xQueueGenericSendFromISR( xRxQueue, &cIn, &xHigherPriorityTaskWokenByPost, queueSEND_TO_BACK );
+
+		} while( portINPUT_BYTE( BUFFER_COUNT ) );
+
+		// Now the buffer is empty we can switch context if necessary.  Note that the
+		// name of the yield function required is port specific.
+		if( xHigherPriorityTaskWokenByPost )
+		{
+			portYIELD_FROM_ISR();
+		}
+	 }
+	 </pre>
+	 *
+	 * \defgroup xQueueSendFromISR xQueueSendFromISR
+	 * \ingroup QueueManagement
+	 */
+	BaseType_t xQueueGenericSendFromISR(QueueHandle_t xQueue, const void *const pvItemToQueue, BaseType_t *const pxHigherPriorityTaskWoken, const BaseType_t xCopyPosition) PRIVILEGED_FUNCTION;
+	BaseType_t xQueueGiveFromISR(QueueHandle_t xQueue, BaseType_t *const pxHigherPriorityTaskWoken) PRIVILEGED_FUNCTION;
+
+	/**
+	 * queue. h
+	 * <pre>
+	 BaseType_t xQueueReceiveFromISR(
+										   QueueHandle_t	xQueue,
+										   void	*pvBuffer,
+										   BaseType_t *pxTaskWoken
 									   );
- </pre>
- *
- * It is preferred that the macros xQueueSendFromISR(),
- * xQueueSendToFrontFromISR() and xQueueSendToBackFromISR() be used in place
- * of calling this function directly.  xQueueGiveFromISR() is an
- * equivalent for use by semaphores that don't actually copy any data.
- *
- * Post an item on a queue.  It is safe to use this function from within an
- * interrupt service routine.
- *
- * Items are queued by copy not reference so it is preferable to only
- * queue small items, especially when called from an ISR.  In most cases
- * it would be preferable to store a pointer to the item being queued.
- *
- * @param xQueue The handle to the queue on which the item is to be posted.
- *
- * @param pvItemToQueue A pointer to the item that is to be placed on the
- * queue.  The size of the items the queue will hold was defined when the
- * queue was created, so this many bytes will be copied from pvItemToQueue
- * into the queue storage area.
- *
- * @param pxHigherPriorityTaskWoken xQueueGenericSendFromISR() will set
- * *pxHigherPriorityTaskWoken to pdTRUE if sending to the queue caused a task
- * to unblock, and the unblocked task has a priority higher than the currently
- * running task.  If xQueueGenericSendFromISR() sets this value to pdTRUE then
- * a context switch should be requested before the interrupt is exited.
- *
- * @param xCopyPosition Can take the value queueSEND_TO_BACK to place the
- * item at the back of the queue, or queueSEND_TO_FRONT to place the item
- * at the front of the queue (for high priority messages).
- *
- * @return pdTRUE if the data was successfully sent to the queue, otherwise
- * errQUEUE_FULL.
- *
- * Example usage for buffered IO (where the ISR can obtain more than one value
- * per call):
-   <pre>
- void vBufferISR( void )
- {
- char cIn;
- BaseType_t xHigherPriorityTaskWokenByPost;
+	 * </pre>
+	 *
+	 * Receive an item from a queue.  It is safe to use this function from within an
+	 * interrupt service routine.
+	 *
+	 * @param xQueue The handle to the queue from which the item is to be
+	 * received.
+	 *
+	 * @param pvBuffer Pointer to the buffer into which the received item will
+	 * be copied.
+	 *
+	 * @param pxTaskWoken A task may be blocked waiting for space to become
+	 * available on the queue.  If xQueueReceiveFromISR causes such a task to
+	 * unblock *pxTaskWoken will get set to pdTRUE, otherwise *pxTaskWoken will
+	 * remain unchanged.
+	 *
+	 * @return pdTRUE if an item was successfully received from the queue,
+	 * otherwise pdFALSE.
+	 *
+	 * Example usage:
+	   <pre>
 
-	// We have not woken a task at the start of the ISR.
-	xHigherPriorityTaskWokenByPost = pdFALSE;
+	 QueueHandle_t xQueue;
 
-	// Loop until the buffer is empty.
-	do
-	{
-		// Obtain a byte from the buffer.
-		cIn = portINPUT_BYTE( RX_REGISTER_ADDRESS );
+	 // Function to create a queue and post some values.
+	 void vAFunction( void *pvParameters )
+	 {
+	 char cValueToPost;
+	 const TickType_t xTicksToWait = ( TickType_t )0xff;
 
-		// Post each byte.
-		xQueueGenericSendFromISR( xRxQueue, &cIn, &xHigherPriorityTaskWokenByPost, queueSEND_TO_BACK );
+		// Create a queue capable of containing 10 characters.
+		xQueue = xQueueCreate( 10, sizeof( char ) );
+		if( xQueue == 0 )
+		{
+			// Failed to create the queue.
+		}
 
-	} while( portINPUT_BYTE( BUFFER_COUNT ) );
+		// ...
 
-	// Now the buffer is empty we can switch context if necessary.  Note that the
-	// name of the yield function required is port specific.
-	if( xHigherPriorityTaskWokenByPost )
-	{
-		portYIELD_FROM_ISR();
-	}
- }
- </pre>
- *
- * \defgroup xQueueSendFromISR xQueueSendFromISR
- * \ingroup QueueManagement
- */
-BaseType_t xQueueGenericSendFromISR( QueueHandle_t xQueue, const void * const pvItemToQueue, BaseType_t * const pxHigherPriorityTaskWoken, const BaseType_t xCopyPosition ) PRIVILEGED_FUNCTION;
-BaseType_t xQueueGiveFromISR( QueueHandle_t xQueue, BaseType_t * const pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
+		// Post some characters that will be used within an ISR.  If the queue
+		// is full then this task will block for xTicksToWait ticks.
+		cValueToPost = 'a';
+		xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
+		cValueToPost = 'b';
+		xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
 
-/**
- * queue. h
- * <pre>
- BaseType_t xQueueReceiveFromISR(
-									   QueueHandle_t	xQueue,
-									   void	*pvBuffer,
-									   BaseType_t *pxTaskWoken
-								   );
- * </pre>
- *
- * Receive an item from a queue.  It is safe to use this function from within an
- * interrupt service routine.
- *
- * @param xQueue The handle to the queue from which the item is to be
- * received.
- *
- * @param pvBuffer Pointer to the buffer into which the received item will
- * be copied.
- *
- * @param pxTaskWoken A task may be blocked waiting for space to become
- * available on the queue.  If xQueueReceiveFromISR causes such a task to
- * unblock *pxTaskWoken will get set to pdTRUE, otherwise *pxTaskWoken will
- * remain unchanged.
- *
- * @return pdTRUE if an item was successfully received from the queue,
- * otherwise pdFALSE.
- *
- * Example usage:
-   <pre>
+		// ... keep posting characters ... this task may block when the queue
+		// becomes full.
 
- QueueHandle_t xQueue;
+		cValueToPost = 'c';
+		xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
+	 }
 
- // Function to create a queue and post some values.
- void vAFunction( void *pvParameters )
- {
- char cValueToPost;
- const TickType_t xTicksToWait = ( TickType_t )0xff;
+	 // ISR that outputs all the characters received on the queue.
+	 void vISR_Routine( void )
+	 {
+	 BaseType_t xTaskWokenByReceive = pdFALSE;
+	 char cRxedChar;
 
-	// Create a queue capable of containing 10 characters.
-	xQueue = xQueueCreate( 10, sizeof( char ) );
-	if( xQueue == 0 )
-	{
-		// Failed to create the queue.
-	}
+		while( xQueueReceiveFromISR( xQueue, ( void * ) &cRxedChar, &xTaskWokenByReceive) )
+		{
+			// A character was received.  Output the character now.
+			vOutputCharacter( cRxedChar );
 
-	// ...
+			// If removing the character from the queue woke the task that was
+			// posting onto the queue cTaskWokenByReceive will have been set to
+			// pdTRUE.  No matter how many times this loop iterates only one
+			// task will be woken.
+		}
 
-	// Post some characters that will be used within an ISR.  If the queue
-	// is full then this task will block for xTicksToWait ticks.
-	cValueToPost = 'a';
-	xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
-	cValueToPost = 'b';
-	xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
+		if( cTaskWokenByPost != ( char ) pdFALSE;
+		{
+			taskYIELD ();
+		}
+	 }
+	 </pre>
+	 * \defgroup xQueueReceiveFromISR xQueueReceiveFromISR
+	 * \ingroup QueueManagement
+	 */
+	BaseType_t xQueueReceiveFromISR(QueueHandle_t xQueue, void *const pvBuffer, BaseType_t *const pxHigherPriorityTaskWoken) PRIVILEGED_FUNCTION;
 
-	// ... keep posting characters ... this task may block when the queue
-	// becomes full.
+	/*
+	 * Utilities to query queues that are safe to use from an ISR.  These utilities
+	 * should be used only from witin an ISR, or within a critical section.
+	 */
+	BaseType_t xQueueIsQueueEmptyFromISR(const QueueHandle_t xQueue) PRIVILEGED_FUNCTION;
+	BaseType_t xQueueIsQueueFullFromISR(const QueueHandle_t xQueue) PRIVILEGED_FUNCTION;
+	UBaseType_t uxQueueMessagesWaitingFromISR(const QueueHandle_t xQueue) PRIVILEGED_FUNCTION;
 
-	cValueToPost = 'c';
-	xQueueSend( xQueue, ( void * ) &cValueToPost, xTicksToWait );
- }
+	/*
+	 * The functions defined above are for passing data to and from tasks.  The
+	 * functions below are the equivalents for passing data to and from
+	 * co-routines.
+	 *
+	 * These functions are called from the co-routine macro implementation and
+	 * should not be called directly from application code.  Instead use the macro
+	 * wrappers defined within croutine.h.
+	 */
+	BaseType_t xQueueCRSendFromISR(QueueHandle_t xQueue, const void *pvItemToQueue, BaseType_t xCoRoutinePreviouslyWoken);
+	BaseType_t xQueueCRReceiveFromISR(QueueHandle_t xQueue, void *pvBuffer, BaseType_t *pxTaskWoken);
+	BaseType_t xQueueCRSend(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait);
+	BaseType_t xQueueCRReceive(QueueHandle_t xQueue, void *pvBuffer, TickType_t xTicksToWait);
 
- // ISR that outputs all the characters received on the queue.
- void vISR_Routine( void )
- {
- BaseType_t xTaskWokenByReceive = pdFALSE;
- char cRxedChar;
+	/*
+	 * For internal use only.  Use xSemaphoreCreateMutex(),
+	 * xSemaphoreCreateCounting() or xSemaphoreGetMutexHolder() instead of calling
+	 * these functions directly.
+	 */
+	QueueHandle_t xQueueCreateMutex(const uint8_t ucQueueType) PRIVILEGED_FUNCTION;
+	QueueHandle_t xQueueCreateMutexStatic(const uint8_t ucQueueType, StaticQueue_t *pxStaticQueue) PRIVILEGED_FUNCTION;
+	QueueHandle_t xQueueCreateCountingSemaphore(const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount) PRIVILEGED_FUNCTION;
+	QueueHandle_t xQueueCreateCountingSemaphoreStatic(const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount, StaticQueue_t *pxStaticQueue) PRIVILEGED_FUNCTION;
+	BaseType_t xQueueSemaphoreTake(QueueHandle_t xQueue, TickType_t xTicksToWait) PRIVILEGED_FUNCTION;
+	TaskHandle_t xQueueGetMutexHolder(QueueHandle_t xSemaphore) PRIVILEGED_FUNCTION;
+	TaskHandle_t xQueueGetMutexHolderFromISR(QueueHandle_t xSemaphore) PRIVILEGED_FUNCTION;
 
-	while( xQueueReceiveFromISR( xQueue, ( void * ) &cRxedChar, &xTaskWokenByReceive) )
-	{
-		// A character was received.  Output the character now.
-		vOutputCharacter( cRxedChar );
-
-		// If removing the character from the queue woke the task that was
-		// posting onto the queue cTaskWokenByReceive will have been set to
-		// pdTRUE.  No matter how many times this loop iterates only one
-		// task will be woken.
-	}
-
-	if( cTaskWokenByPost != ( char ) pdFALSE;
-	{
-		taskYIELD ();
-	}
- }
- </pre>
- * \defgroup xQueueReceiveFromISR xQueueReceiveFromISR
- * \ingroup QueueManagement
- */
-BaseType_t xQueueReceiveFromISR( QueueHandle_t xQueue, void * const pvBuffer, BaseType_t * const pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
-
-/*
- * Utilities to query queues that are safe to use from an ISR.  These utilities
- * should be used only from witin an ISR, or within a critical section.
- */
-BaseType_t xQueueIsQueueEmptyFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
-BaseType_t xQueueIsQueueFullFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
-UBaseType_t uxQueueMessagesWaitingFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
-
-/*
- * The functions defined above are for passing data to and from tasks.  The
- * functions below are the equivalents for passing data to and from
- * co-routines.
- *
- * These functions are called from the co-routine macro implementation and
- * should not be called directly from application code.  Instead use the macro
- * wrappers defined within croutine.h.
- */
-BaseType_t xQueueCRSendFromISR( QueueHandle_t xQueue, const void *pvItemToQueue, BaseType_t xCoRoutinePreviouslyWoken );
-BaseType_t xQueueCRReceiveFromISR( QueueHandle_t xQueue, void *pvBuffer, BaseType_t *pxTaskWoken );
-BaseType_t xQueueCRSend( QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait );
-BaseType_t xQueueCRReceive( QueueHandle_t xQueue, void *pvBuffer, TickType_t xTicksToWait );
-
-/*
- * For internal use only.  Use xSemaphoreCreateMutex(),
- * xSemaphoreCreateCounting() or xSemaphoreGetMutexHolder() instead of calling
- * these functions directly.
- */
-QueueHandle_t xQueueCreateMutex( const uint8_t ucQueueType ) PRIVILEGED_FUNCTION;
-QueueHandle_t xQueueCreateMutexStatic( const uint8_t ucQueueType, StaticQueue_t *pxStaticQueue ) PRIVILEGED_FUNCTION;
-QueueHandle_t xQueueCreateCountingSemaphore( const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount ) PRIVILEGED_FUNCTION;
-QueueHandle_t xQueueCreateCountingSemaphoreStatic( const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount, StaticQueue_t *pxStaticQueue ) PRIVILEGED_FUNCTION;
-BaseType_t xQueueSemaphoreTake( QueueHandle_t xQueue, TickType_t xTicksToWait ) PRIVILEGED_FUNCTION;
-TaskHandle_t xQueueGetMutexHolder( QueueHandle_t xSemaphore ) PRIVILEGED_FUNCTION;
-TaskHandle_t xQueueGetMutexHolderFromISR( QueueHandle_t xSemaphore ) PRIVILEGED_FUNCTION;
-
-/*
- * For internal use only.  Use xSemaphoreTakeMutexRecursive() or
- * xSemaphoreGiveMutexRecursive() instead of calling these functions directly.
- */
-BaseType_t xQueueTakeMutexRecursive( QueueHandle_t xMutex, TickType_t xTicksToWait ) PRIVILEGED_FUNCTION;
-BaseType_t xQueueGiveMutexRecursive( QueueHandle_t xMutex ) PRIVILEGED_FUNCTION;
+	/*
+	 * For internal use only.  Use xSemaphoreTakeMutexRecursive() or
+	 * xSemaphoreGiveMutexRecursive() instead of calling these functions directly.
+	 */
+	BaseType_t xQueueTakeMutexRecursive(QueueHandle_t xMutex, TickType_t xTicksToWait) PRIVILEGED_FUNCTION;
+	BaseType_t xQueueGiveMutexRecursive(QueueHandle_t xMutex) PRIVILEGED_FUNCTION;
 
 /*
  * Reset a queue back to its original empty state.  The return value is now

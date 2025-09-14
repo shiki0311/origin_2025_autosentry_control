@@ -1,16 +1,28 @@
-/*****************************************************************************************************************************
+/********************************************************************************************************************************************
  * @file: bsp_can.c
  * @author: Shiki
  * @date: 2025.7.12
- * @brief:	哨兵2025赛季CAN总线支持包，实现不同task和电机的CAN接收和发送函数.
-
- *****************************************************************************************************************************/
+ * @brief:	哨兵2025赛季CAN总线支持包，实现CAN接收和发送函数.
+ * *******************************************************************************************************************************************
+ * @attention: 1.哨兵can报文发送的流程是在各个task计算出需要向电机或其他设备（超电）需要发送的数据后，在xxx_task.c中调用
+ *             Allocate_Can_Buffer（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，
+ *             其他直接调用Allocate_Can_Buffer()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can报文缓冲区（CanTxMsgTypeDef类型的全局结构体变量)
+ *             最后can报文会在定时器中断中统一发送。
+ *
+ *             2.如果要控制每一种can报文的发送频率，可以在定时器中断回调函数修改频率。
+ *
+ *			   3.如果can报文因为没有空闲邮箱而发送失败，会送入基于freertos创建的队列在有空闲邮箱时尝试重新发送。
+ **********************************************************************************************************************************************/
 
 #include "bsp_can.h"
 #include "bsp_cap.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
 #include "main.h"
 #include "detect_task.h"
 #include "user_common_lib.h"
+#include "string.h"
 
 #define P_MIN -3.1415926f
 #define P_MAX 3.1415926f
@@ -25,21 +37,33 @@
 
 #define DM4310_RecID 0x00
 #define CAN_6020_YAW_ID 0x205
-#define CAN_GIMBAL_ALL_ID 0x1FF
 
-#define CAN_CAP_TX_ID 0x140
 #define CAN_CAP_RX_ID 0x130
 
 #define CAN_3508_CHASSIS_MOTOR1_ID 0x201
 #define CAN_3508_CHASSIS_MOTOR2_ID 0x202
 #define CAN_3508_CHASSIS_MOTOR3_ID 0x203
 #define CAN_3508_CHASSIS_MOTOR4_ID 0x204
-#define CAN_CHASSIS_ALL_ID 0x200
 
 #define CAN_3508_FRIC_MOTOR1_ID 0x207
 #define CAN_3508_FRIC_MOTOR2_ID 0x208
 #define CAN_2006_DIAL_MOTOR_ID 0x206
+
+#define CAN_GIMBAL_YAW_ID 0x1FF
+#define CAN_CAP_TX_ID 0x140
+#define CAN_CHASSIS_ALL_ID 0x200
 #define CAN_SHOOT_ALL_ID 0x1FF
+
+#define SHOOT_CAN hcan2
+#define GIMBAL_PITCH_CAN hcan2
+#define GIMBAL_YAW_CAN hcan1
+#define CHASSIS_CAN hcan1
+#define CAP_CAN hcan1
+
+
+#define TIM_DIV2 1
+
+#define CAN_TX_QUEUE_LENGTH 64
 
 #define get_motor_measure(ptr, data)                                   \
 	{                                                                  \
@@ -54,11 +78,29 @@ motor_measure_t motor_measure_chassis[4];
 motor_measure_t motor_measure_gimbal[2];
 motor_measure_t motor_measure_shoot[3];
 DM_motor_data_t DM_pitch_motor_data = {0};
-CanTxQueueTypeDef can_tx_queue;
 int32_t dial_angle = 0;
 CAN_RxHeaderTypeDef rx_header; // debug用，看can接收正不正常
+/*********************************************CAN发送队列*********************************************************************/
+QueueHandle_t CAN1_resend_queue; // CAN1消息队列句柄,此队列用于储存CAN1第一次发送失败的消息
+QueueHandle_t CAN2_resend_queue; // CAN2消息队列句柄，此队列用于储存CAN2第一次发送失败的消息
 
-void can_filter_init(void)
+#define SHOOT_CAN_RESEND_QUEUE CAN2_resend_queue
+#define GIMBAL_PITCH_CAN_RESEND_QUEUE CAN2_resend_queue
+#define GIMBAL_YAW_CAN_RESEND_QUEUE CAN1_resend_queue
+#define CHASSIS_CAN_RESEND_QUEUE CAN1_resend_queue
+#define CAP_CAN_RESEND_QUEUE CAN1_resend_queue
+/*********************************************CAN发送缓冲区*********************************************************************/
+CanTxMsgTypeDef cap_send_buffer;		  // 超电can报文全局缓冲区
+CanTxMsgTypeDef chassis_send_buffer;	  // 底盘轮电机can报文全局缓冲区
+CanTxMsgTypeDef gimbal_yaw_send_buffer;	  // yaw轴6020 can报文全局缓冲区
+CanTxMsgTypeDef gimbal_pitch_send_buffer; // pitch轴达秒 can报文全局缓冲区
+CanTxMsgTypeDef shoot_send_buffer;		  // 发射机构can报文全局缓冲区
+
+/**
+ * @description: 配置can过滤器，开启can外设以及需要的中断
+ * @return 无
+ */
+void Can_Filter_Init(void)
 {
 	CAN_FilterTypeDef can_filter_st;
 	can_filter_st.FilterActivation = ENABLE;
@@ -73,7 +115,7 @@ void can_filter_init(void)
 	HAL_CAN_ConfigFilter(&hcan1, &can_filter_st);
 	HAL_CAN_Start(&hcan1);
 	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+	// HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
 
 	can_filter_st.SlaveStartFilterBank = 14;
 	can_filter_st.FilterBank = 14;
@@ -82,6 +124,52 @@ void can_filter_init(void)
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
+/**
+ * @description: CAN缓冲区初始化
+ * @return {*} 无
+ */
+void Can_Buffer_Init(void)
+{
+	// 定义缓冲区与对应StdId的映射关系（数组批量处理）
+	struct
+	{
+		CanTxMsgTypeDef *buffer;
+		uint32_t stdId;
+	} buffer_list[] = {
+		{&cap_send_buffer, CAN_CAP_TX_ID},
+		{&chassis_send_buffer, CAN_CHASSIS_ALL_ID},
+		{&gimbal_yaw_send_buffer, CAN_GIMBAL_YAW_ID},
+		{&gimbal_pitch_send_buffer, GIMBAL_PITCH_DM_SendID},
+		{&shoot_send_buffer, CAN_SHOOT_ALL_ID}};
+
+	// 遍历数组，批量初始化所有缓冲区
+	for (size_t i = 0; i < sizeof(buffer_list) / sizeof(buffer_list[0]); i++)
+	{
+		buffer_list[i].buffer->tx_header.IDE = CAN_ID_STD;					  // 标准帧
+		buffer_list[i].buffer->tx_header.RTR = CAN_RTR_DATA;				  // 数据帧
+		buffer_list[i].buffer->tx_header.DLC = 0x08;						  // 数据长度8字节
+		buffer_list[i].buffer->tx_header.StdId = buffer_list[i].stdId;		  // CAN Id
+		memset(buffer_list[i].buffer->data, 0, sizeof(buffer_list[i].buffer->data)); // 数据缓冲区清零
+	}
+}
+
+/**
+ * @description: 基于freertos创建CAN发送队列
+ * @return 无
+ */
+void Create_Can_Send_Queues()
+{
+	taskENTER_CRITICAL(); // 进入临界区
+
+	CAN1_resend_queue = xQueueCreate(CAN_TX_QUEUE_LENGTH, sizeof(CanTxMsgTypeDef));
+	CAN2_resend_queue = xQueueCreate(CAN_TX_QUEUE_LENGTH, sizeof(CanTxMsgTypeDef));
+
+	taskEXIT_CRITICAL(); // 退出临界区
+
+	if (CAN1_resend_queue == NULL || CAN2_resend_queue == NULL)
+
+		Error_Handler();
+}
 /*********************************************CAN接收函数*********************************************************************/
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -174,202 +262,66 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	}
 }
 
-/*********************************************CAN发送循环队列函数库，当一帧can消息发送失败就存入队列等待can邮箱空闲再发送************************************************************/
-void CAN_TxQueue_Init()
+/*********************************************************填充CAN消息缓冲区************************************************************************/
+/**
+ * @description: 将待发送的can报文送入对应的缓冲区，在CAN_TX_TimerIRQHandler()函数中将缓冲区中的can报文统一定时发送
+ * @return 无
+ * @param {int16_t} data1/2/3/4  标准can数据帧的数据域，一共八个字节，这边用int16_t接收是考虑兼容大疆系列电机can数据发送协议，对于别的can报文需要做一些类型转换处理
+ * @param {CAN_TX_ID} can_id can报文id
+ * @attention 将DM电机can数据帧送入缓冲区需调用Ctrl_DM_Motor（）函数，原因是达秒电机的can数据帧传输的数据有五个，需要先在Ctrl_DM_Motor（）进行处理后再在其内部调用Allocate_Can_Buffer（）
+ */
+void Allocate_Can_Buffer(int16_t data1, int16_t data2, int16_t data3, int16_t data4, CAN_CMD_ID can_cmd_id)
 {
-	memset(can_tx_queue.can_msg_buffer, 0, sizeof(can_tx_queue.can_msg_buffer));
-	can_tx_queue.element_number = 0;
-	can_tx_queue.head = 0;
-	can_tx_queue.tail = 0;
-}
+	CanTxMsgTypeDef *pTxMsg = NULL;						  // 声明缓冲区指针
+	int16_t data_array[4] = {data1, data2, data3, data4}; // 数据打包成数组，方便循环处理
 
-void CAN_TxQueue_Push(CAN_TxHeaderTypeDef *pHeader, uint8_t *pData)
-{
-	__disable_irq();
-	can_tx_queue.tail = (can_tx_queue.head + can_tx_queue.element_number) % TX_QUEUE_SIZE;
-	can_tx_queue.can_msg_buffer[can_tx_queue.tail].tx_header = *pHeader;
-	memcpy(can_tx_queue.can_msg_buffer[can_tx_queue.tail].data, pData, pHeader->DLC);
-	if (can_tx_queue.element_number == TX_QUEUE_SIZE)
+	// 根据命令ID，让指针指向对应的缓冲区
+	switch (can_cmd_id)
 	{
-		can_tx_queue.head = (can_tx_queue.head + 1) % TX_QUEUE_SIZE;
+	case CAN_CHASSIS_CMD:
+		pTxMsg = &chassis_send_buffer;
+		break;
+	case CAN_GIMBAL_YAW_CMD:
+		pTxMsg = &gimbal_yaw_send_buffer;
+		break;
+	case CAN_GIMBAL_PITCH_CMD:
+		pTxMsg = &gimbal_pitch_send_buffer;
+		break;
+	case CAN_SHOOT_CMD:
+		pTxMsg = &shoot_send_buffer;
+		break;
+	case CAN_CAP_CMD:
+		pTxMsg = &cap_send_buffer;
+		break;
+	default:
+		return; // 无效命令，直接返回
+	}
+
+	// 统一处理数据填充（超电命令和其他命令分开处理）
+	if (can_cmd_id == CAN_CAP_CMD)
+	{
+		// 处理CAP命令的特殊逻辑
+		for (int i = 0; i < 4; i++)
+		{
+			uint16_t temp = data_array[i] * 100;
+			pTxMsg->data[2 * i] = temp & 0xFF;			  // 低8位
+			pTxMsg->data[2 * i + 1] = (temp >> 8) & 0xFF; // 高8位
+		}
 	}
 	else
 	{
-		can_tx_queue.element_number++;
-	}
-	__enable_irq();
-}
-
-int CAN_TxQueue_Pop(CAN_TxHeaderTypeDef *pHeader, uint8_t *pData)
-{
-	__disable_irq();
-	if (can_tx_queue.element_number == 0)
-	{
-		__enable_irq();
-		return -1;
-	}
-	*pHeader = can_tx_queue.can_msg_buffer[can_tx_queue.head].tx_header;
-	memcpy(pData, can_tx_queue.can_msg_buffer[can_tx_queue.head].data, pHeader->DLC);
-	can_tx_queue.head = (can_tx_queue.head + 1) % TX_QUEUE_SIZE;
-	can_tx_queue.element_number--;
-	__enable_irq();
-	return 0;
-}
-void Process_TxQueue(CAN_HandleTypeDef *hcan)
-{
-	CAN_TxHeaderTypeDef tx_header;
-	uint8_t tx_data[8];
-	uint32_t send_mail_box;
-	// 尝试发送队列中的消息
-	while (HAL_CAN_GetTxMailboxesFreeLevel(hcan) > 0)
-	{
-		if (CAN_TxQueue_Pop(&tx_header, tx_data) == 0)
+		// 处理其他命令的通用逻辑（直接拆分int16_t）
+		for (int i = 0; i < 4; i++)
 		{
-			HAL_CAN_AddTxMessage(hcan, &tx_header, tx_data, &send_mail_box);
+			pTxMsg->data[2 * i] = (data_array[i] >> 8) & 0xFF; // 高8位
+			pTxMsg->data[2 * i + 1] = data_array[i] & 0xFF;	   // 低8位
 		}
-		else
-			break;
-	}
-}
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	if (hcan == &hcan1)
-		Process_TxQueue(hcan);
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	if (hcan == &hcan1)
-		Process_TxQueue(hcan);
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	if (hcan == &hcan1)
-		Process_TxQueue(hcan);
-}
-
-/*********************************************************CAN发送函数************************************************************************/
-void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-16384,+16384
-{
-	CAN_TxHeaderTypeDef chassis_tx_message;
-	uint8_t chassis_can_send_data[8];
-	uint32_t send_mail_box;
-	chassis_tx_message.StdId = CAN_CHASSIS_ALL_ID;
-	chassis_tx_message.IDE = CAN_ID_STD;
-	chassis_tx_message.RTR = CAN_RTR_DATA;
-	chassis_tx_message.DLC = 0x08;
-	chassis_can_send_data[0] = motor1 >> 8;
-	chassis_can_send_data[1] = motor1;
-	chassis_can_send_data[2] = motor2 >> 8;
-	chassis_can_send_data[3] = motor2;
-	chassis_can_send_data[4] = motor3 >> 8;
-	chassis_can_send_data[5] = motor3;
-	chassis_can_send_data[6] = motor4 >> 8;
-	chassis_can_send_data[7] = motor4;
-
-	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_tx_message, chassis_can_send_data, &send_mail_box);
-	if (status != HAL_OK)
-	{
-		// can发送失败送入can发送队列中
-		CAN_TxQueue_Push(&chassis_tx_message, chassis_can_send_data);
 	}
 }
 
-void CAN_Cap_CMD(float data1, float data2, float data3, float data4)
+
+void Ctrl_DM_Motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can2
 {
-	CAN_TxHeaderTypeDef cap_tx_message;
-	uint8_t cap_can_send_data[8];
-	uint32_t send_mail_box;
-	cap_tx_message.StdId = CAN_CAP_TX_ID;
-	cap_tx_message.IDE = CAN_ID_STD;
-	cap_tx_message.RTR = CAN_RTR_DATA;
-	cap_tx_message.DLC = 0x08;
-
-	uint16_t temp;
-
-	temp = data1 * 100;
-	cap_can_send_data[0] = temp;
-	cap_can_send_data[1] = temp >> 8;
-	temp = data2 * 100;
-	cap_can_send_data[2] = temp;
-	cap_can_send_data[3] = temp >> 8;
-	temp = data3 * 100;
-	cap_can_send_data[4] = temp;
-	cap_can_send_data[5] = temp >> 8;
-	temp = data4 * 100;
-	cap_can_send_data[6] = temp;
-	cap_can_send_data[7] = temp >> 8;
-
-	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(&CHASSIS_CAN, &cap_tx_message, cap_can_send_data, &send_mail_box);
-	if (status != HAL_OK)
-	{
-		// can发送失败送入can发送队列中
-		CAN_TxQueue_Push(&cap_tx_message, cap_can_send_data);
-	}
-}
-
-void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
-{
-	CAN_TxHeaderTypeDef gimbal_tx_message;
-	uint8_t gimbal_can_send_data[8];
-	uint32_t send_mail_box;
-	gimbal_tx_message.StdId = CAN_GIMBAL_ALL_ID;
-	gimbal_tx_message.IDE = CAN_ID_STD;
-	gimbal_tx_message.RTR = CAN_RTR_DATA;
-	gimbal_tx_message.DLC = 0x08;
-	gimbal_can_send_data[0] = motor1 >> 8;
-	gimbal_can_send_data[1] = motor1;
-	gimbal_can_send_data[2] = motor2 >> 8;
-	gimbal_can_send_data[3] = motor2;
-	gimbal_can_send_data[4] = motor3 >> 8;
-	gimbal_can_send_data[5] = motor3;
-	gimbal_can_send_data[6] = motor4 >> 8;
-	gimbal_can_send_data[7] = motor4;
-
-	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(&GIMBAL_CAN, &gimbal_tx_message, gimbal_can_send_data, &send_mail_box);
-	if (status != HAL_OK)
-	{
-		// can发送失败送入can发送队列中
-		CAN_TxQueue_Push(&gimbal_tx_message, gimbal_can_send_data);
-	}
-}
-
-void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4) //-30000,+30000
-{
-	CAN_TxHeaderTypeDef shoot_tx_message;
-	uint8_t shoot_can_send_data[8];
-	uint32_t send_mail_box;
-	shoot_tx_message.StdId = CAN_SHOOT_ALL_ID;
-	shoot_tx_message.IDE = CAN_ID_STD;
-	shoot_tx_message.RTR = CAN_RTR_DATA;
-	shoot_tx_message.DLC = 0x08;
-	shoot_can_send_data[0] = motor1 >> 8;
-	shoot_can_send_data[1] = motor1;
-	shoot_can_send_data[2] = motor2 >> 8;
-	shoot_can_send_data[3] = motor2;
-	shoot_can_send_data[4] = motor3 >> 8;
-	shoot_can_send_data[5] = motor3;
-	shoot_can_send_data[6] = motor4 >> 8;
-	shoot_can_send_data[7] = motor4;
-
-	HAL_CAN_AddTxMessage(&SHOOT_CAN, &shoot_tx_message, shoot_can_send_data, &send_mail_box);
-}
-
-void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq) // can2
-{
-	uint8_t TX_Data[8];
-	uint32_t send_mail_box;
-	CAN_TxHeaderTypeDef Tx_Msg;
-
-	Tx_Msg.StdId = id;
-	Tx_Msg.IDE = CAN_ID_STD;
-	Tx_Msg.RTR = CAN_RTR_DATA;
-	Tx_Msg.DLC = 8;
-
 	uint16_t pos_tmp, vel_tmp, kp_tmp, kd_tmp, tor_tmp;
 	pos_tmp = float_to_uint(_pos, -12.5, 12.5, 16);
 	vel_tmp = float_to_uint(_vel, -45, 45, 12);
@@ -377,18 +329,97 @@ void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float
 	kd_tmp = float_to_uint(_KD, KD_MIN, KD_MAX, 12);
 	tor_tmp = float_to_uint(_torq, T_MIN, T_MAX, 12);
 
-	TX_Data[0] = (pos_tmp >> 8);
-	TX_Data[1] = pos_tmp;
-	TX_Data[2] = (vel_tmp >> 4);
-	TX_Data[3] = ((vel_tmp & 0xF) << 4) | (kp_tmp >> 8);
-	TX_Data[4] = kp_tmp;
-	TX_Data[5] = (kd_tmp >> 4);
-	TX_Data[6] = ((kd_tmp & 0xF) << 4) | (tor_tmp >> 8);
-	TX_Data[7] = tor_tmp;
+	uint16_t data1, data2, data3, data4;
+	data1 = pos_tmp;
+	data2 = ((vel_tmp >> 4) << 8) | ((vel_tmp & 0x0F) << 4 | (kp_tmp >> 8));
+	data3 = ((kp_tmp & 0xFF) << 8) | (kd_tmp >> 4);
+	data4 = ((kd_tmp & 0x0F) << 12) | tor_tmp;
 
-	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
+	Allocate_Can_Buffer(data1, data2, data3, data4, CAN_GIMBAL_PITCH_CMD);
 }
 
+
+/*********************************************定时发送CAN报文的中断回调函数***********************************************************/
+/**
+ * @description: tim5定时器计数溢出中断回调函数，用于以固定频率发送can报文，函数体每2ms执行一次
+ * @return {*}
+ */
+void CAN_TX_TimerIRQHandler()
+{
+	static uint8_t div = 0; // 在函数整体执行频率（500hz）的基础上分频，使不同can报文适配相应的不同频率
+	uint32_t send_mail_box;
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE; // 调度标志
+
+	// 500hz 发送can报文
+	if (HAL_CAN_AddTxMessage(&CHASSIS_CAN, &chassis_send_buffer.tx_header, chassis_send_buffer.data, &send_mail_box) != HAL_OK)
+	{
+		xQueueSendFromISR(CHASSIS_CAN_RESEND_QUEUE, &chassis_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+	}
+	if (HAL_CAN_AddTxMessage(&GIMBAL_YAW_CAN, &gimbal_yaw_send_buffer.tx_header, gimbal_yaw_send_buffer.data, &send_mail_box) != HAL_OK)
+	{
+		xQueueSendFromISR(GIMBAL_YAW_CAN_RESEND_QUEUE, &gimbal_yaw_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+	}
+	if (HAL_CAN_AddTxMessage(&GIMBAL_PITCH_CAN, &gimbal_pitch_send_buffer.tx_header, gimbal_pitch_send_buffer.data, &send_mail_box) != HAL_OK)
+	{
+		xQueueSendFromISR(GIMBAL_PITCH_CAN_RESEND_QUEUE, &gimbal_pitch_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+	}
+	if (HAL_CAN_AddTxMessage(&SHOOT_CAN, &shoot_send_buffer.tx_header, shoot_send_buffer.data, &send_mail_box) != HAL_OK)
+	{
+		xQueueSendFromISR(SHOOT_CAN_RESEND_QUEUE, &shoot_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+	}
+
+	// // 250hz 发送can报文
+	if (div == TIM_DIV2)
+	{
+		if (HAL_CAN_AddTxMessage(&CAP_CAN, &cap_send_buffer.tx_header, cap_send_buffer.data, &send_mail_box) != HAL_OK)
+		{
+			xQueueSendFromISR(CAP_CAN_RESEND_QUEUE, &cap_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+		}
+	}
+
+	div++;
+	div = div % 2;
+
+	if (xHigherPriorityTaskWoken == pdTRUE)
+	{
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // 触发任务切换
+	}
+}
+/*********************************************定时检测需要重新发送的CAN消息的中断回调函数***********************************************************/
+
+/**
+ * @description: tim3定时器计数溢出中断回调函数，用于检测CAN1和CAN2有无第一次发送失败的消息，如有尝试重发。每10ms执行一次
+ * @return {*}
+ */
+void CAN_Resend_Timer_IRQHandler()
+{
+	CanTxMsgTypeDef resend_msg;
+	uint32_t send_mail_box;
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE; // 调度标志
+
+	// 尝试发送队列中的消息
+	while ((HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0 && uxQueueMessagesWaitingFromISR(CAN1_resend_queue) > 0) || (HAL_CAN_GetTxMailboxesFreeLevel(&hcan2) > 0 && uxQueueMessagesWaitingFromISR(CAN2_resend_queue) > 0))
+	{
+		if ((HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0 && uxQueueMessagesWaitingFromISR(CAN1_resend_queue) > 0))
+		{
+			xQueueReceiveFromISR(CAN1_resend_queue, &resend_msg, &xHigherPriorityTaskWoken);
+			HAL_CAN_AddTxMessage(&hcan1, &resend_msg.tx_header, resend_msg.data, &send_mail_box);
+		}
+
+		if ((HAL_CAN_GetTxMailboxesFreeLevel(&hcan2) > 0 && uxQueueMessagesWaitingFromISR(CAN2_resend_queue) > 0))
+		{
+			xQueueReceiveFromISR(CAN2_resend_queue, &resend_msg, &xHigherPriorityTaskWoken);
+			HAL_CAN_AddTxMessage(&hcan2, &resend_msg.tx_header, resend_msg.data, &send_mail_box);
+		}
+	}
+
+	if (xHigherPriorityTaskWoken == pdTRUE)
+	{
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // 触发任务切换
+	}
+}
+
+/*********************************************DM使能和失能函数***********************************************************/
 void enable_DM(uint8_t id, uint8_t ctrl_mode)
 {
 	uint8_t TX_Data[8];
@@ -396,11 +427,11 @@ void enable_DM(uint8_t id, uint8_t ctrl_mode)
 	CAN_TxHeaderTypeDef Tx_Msg;
 
 	if (ctrl_mode == 1)
-		Tx_Msg.StdId = 0x000 + DM4310_SendID;
+		Tx_Msg.StdId = 0x000 + GIMBAL_PITCH_DM_SendID;
 	else if (ctrl_mode == 2)
-		Tx_Msg.StdId = 0x100 + DM4310_SendID;
+		Tx_Msg.StdId = 0x100 + GIMBAL_PITCH_DM_SendID;
 	else if (ctrl_mode == 3)
-		Tx_Msg.StdId = 0x200 + DM4310_SendID;
+		Tx_Msg.StdId = 0x200 + GIMBAL_PITCH_DM_SendID;
 	Tx_Msg.IDE = CAN_ID_STD;
 	Tx_Msg.RTR = CAN_RTR_DATA;
 	Tx_Msg.DLC = 8;
@@ -424,11 +455,11 @@ void disable_DM(uint8_t id, uint8_t ctrl_mode)
 	CAN_TxHeaderTypeDef Tx_Msg;
 
 	if (ctrl_mode == 1)
-		Tx_Msg.StdId = 0x000 + DM4310_SendID;
+		Tx_Msg.StdId = 0x000 + GIMBAL_PITCH_DM_SendID;
 	else if (ctrl_mode == 2)
-		Tx_Msg.StdId = 0x100 + DM4310_SendID;
+		Tx_Msg.StdId = 0x100 + GIMBAL_PITCH_DM_SendID;
 	else if (ctrl_mode == 3)
-		Tx_Msg.StdId = 0x200 + DM4310_SendID;
+		Tx_Msg.StdId = 0x200 + GIMBAL_PITCH_DM_SendID;
 
 	Tx_Msg.IDE = CAN_ID_STD;
 	Tx_Msg.RTR = CAN_RTR_DATA;
@@ -445,3 +476,4 @@ void disable_DM(uint8_t id, uint8_t ctrl_mode)
 
 	HAL_CAN_AddTxMessage(&hcan2, &Tx_Msg, TX_Data, &send_mail_box);
 }
+

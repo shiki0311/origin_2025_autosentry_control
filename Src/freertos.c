@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * File Name          : freertos.c
-  * Description        : Code for freertos applications
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : freertos.c
+ * Description        : Code for freertos applications
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under Ultimate Liberty license
+ * SLA0044, the "License"; You may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at:
+ *                             www.st.com/SLA0044
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -87,7 +87,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
 static StaticTask_t xIdleTaskTCBBuffer;
 static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
 
-void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
+void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize)
 {
   *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
   *ppxIdleTaskStackBuffer = &xIdleStack[0];
@@ -100,7 +100,7 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 static StaticTask_t xTimerTaskTCBBuffer;
 static StackType_t xTimerStack[configTIMER_TASK_STACK_DEPTH];
 
-void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize )
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize)
 {
   *ppxTimerTaskTCBBuffer = &xTimerTaskTCBBuffer;
   *ppxTimerTaskStackBuffer = &xTimerStack[0];
@@ -172,10 +172,10 @@ void MX_FREERTOS_Init(void) {
 
 /* USER CODE BEGIN Header_INS_Task */
 /**
-  * @brief  Function implementing the INS_TASK thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @brief  Function implementing the INS_TASK thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_INS_Task */
 __weak void INS_Task(void const * argument)
 {
@@ -183,7 +183,7 @@ __weak void INS_Task(void const * argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN INS_Task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -192,16 +192,16 @@ __weak void INS_Task(void const * argument)
 
 /* USER CODE BEGIN Header_LED_Task */
 /**
-* @brief Function implementing the LED_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the LED_TASK thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_LED_Task */
 __weak void LED_Task(void const * argument)
 {
   /* USER CODE BEGIN LED_Task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     vTaskDelay(2);
   }
@@ -210,16 +210,16 @@ __weak void LED_Task(void const * argument)
 
 /* USER CODE BEGIN Header_Chassis_Task */
 /**
-* @brief Function implementing the Chassis_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the Chassis_TASK thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_Chassis_Task */
 __weak void Chassis_Task(void const * argument)
 {
   /* USER CODE BEGIN Chassis_Task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -228,16 +228,16 @@ __weak void Chassis_Task(void const * argument)
 
 /* USER CODE BEGIN Header_Gimbal_Task */
 /**
-* @brief Function implementing the Gimbal_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the Gimbal_TASK thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_Gimbal_Task */
 __weak void Gimbal_Task(void const * argument)
 {
   /* USER CODE BEGIN Gimbal_Task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -246,16 +246,16 @@ __weak void Gimbal_Task(void const * argument)
 
 /* USER CODE BEGIN Header_Shoot_Task */
 /**
-* @brief Function implementing the Shoot_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the Shoot_TASK thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_Shoot_Task */
 __weak void Shoot_Task(void const * argument)
 {
   /* USER CODE BEGIN Shoot_Task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -264,16 +264,16 @@ __weak void Shoot_Task(void const * argument)
 
 /* USER CODE BEGIN Header_referee_usart_task */
 /**
-* @brief Function implementing the referee_usart thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the referee_usart thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_referee_usart_task */
 __weak void referee_usart_task(void const * argument)
 {
   /* USER CODE BEGIN referee_usart_task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -282,16 +282,16 @@ __weak void referee_usart_task(void const * argument)
 
 /* USER CODE BEGIN Header_detect_task */
 /**
-* @brief Function implementing the Detect_Task thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the Detect_Task thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_detect_task */
 __weak void detect_task(void const * argument)
 {
   /* USER CODE BEGIN detect_task */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }

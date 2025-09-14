@@ -208,7 +208,7 @@ static chassis_mode_t Chassis_Mode_Update()
 	bool_t nav_rotate = ((AutoAim_Data_Receive.rotate != 0) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 	bool_t nav_safe = ((Game_Status.game_progress != 4) && (rc_ctrl.rc.s[1] == RC_SW_UP));
 
-	if (rc_ctrl_safe || nav_safe)
+	if (rc_ctrl_safe)
 	{
 		return CHASSIS_SAFE; // 失能模式的优先级最高，需要优先判断
 	}
@@ -229,12 +229,12 @@ static void Health_Monitor_Update(void)
 
 	static uint32_t hurt_start_time = 0;
 	static uint16_t last_health = 0;
-	uint16_t current_health = Game_Robot_State.current_HP; // ?????????
+	uint16_t current_health = Game_Robot_State.current_HP; 
 
 	switch (health_state)
 	{
 	case HEALTH_NORMAL:
-		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ????????蹥??
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) 
 		{
 			health_state = HEALTH_HURT;
 			hurt_start_time = xTaskGetTickCount();
@@ -242,7 +242,7 @@ static void Health_Monitor_Update(void)
 		break;
 
 	case HEALTH_HURT:
-		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) // ??????????
+		if (current_health < last_health && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0) 
 		{
 			hurt_start_time = xTaskGetTickCount();
 		}
@@ -386,7 +386,6 @@ static fp32 Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
  */
 static fp32 Set_Rotate_Wz(fp32 *wz)
 {
-	// todo
 	if (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.ch[4] <= -500)
 		*wz = ROTATE_WZ_MAX;
 	else if (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.ch[4] >= 500)
@@ -500,11 +499,12 @@ void Chassis_Task(void const *argument)
 		chassis_vector_to_mecanum_wheel_speed(chassis_control.vx, chassis_control.vy, chassis_control.wz, &chassis_m3508[0].speed_set, &chassis_m3508[1].speed_set, &chassis_m3508[2].speed_set, &chassis_m3508[3].speed_set, chassis_mode);
 
 		chassis_motor_current_set(chassis_mode);
-		CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
+		Allocate_Can_Buffer(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0, CAN_CAP_CMD);
+		// CAN_Cap_CMD(Game_Robot_State.chassis_power_limit - 5, 0, Power_Heat_Data.buffer_energy, 0);
 		power_control();
 
-		CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
-
+		Allocate_Can_Buffer(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current, CAN_CHASSIS_CMD);
+		// CAN_Chassis_CMD(chassis_m3508[0].give_current, chassis_m3508[1].give_current, chassis_m3508[2].give_current, chassis_m3508[3].give_current);
 		vTaskDelay(2);
 	}
 }

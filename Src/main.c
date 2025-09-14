@@ -85,7 +85,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-		HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -114,22 +114,26 @@ int main(void)
   MX_CRC_Init();
   MX_TIM8_Init();
   MX_TIM4_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   MX_USB_DEVICE_Init();
   HAL_TIM_Base_Start_IT(&htim1);             // 开启tim1中断，用于向上位机定时发送陀螺仪数据
   HAL_TIM_Base_Start_IT(&htim8);             // 开启tim8中断，用于向上位机定时发送裁判系统数据
   HAL_TIM_PWM_Start(&htim10, TIM_CHANNEL_1); // 用于对陀螺仪进行恒温处理
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);  // 蜂鸣器pwm
-  can_filter_init();
-  CAN_TxQueue_Init();
+  buzzer_play_eva();
+  HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3); // 用完蜂鸣器就关掉省资源
+  /***************CAN初始化*****************/
+  Create_Can_Send_Queues(); // 创建can重发队列，需要保证在开启tim3溢出中断之前调用，不然tim3中断回调函数调用队列会发送错误
+  Can_Filter_Init();
+  Can_Buffer_Init();
+  /*****************************************/
   delay_init();
   remote_control_init();
-
   fifo_s_init(&Referee_FIFO, Referee_FIFO_Buffer, REFEREE_FIFO_BUF_LENGTH);
   Referee_StructInit();
   Referee_UARTInit(Referee_Buffer[0], Referee_Buffer[1], REFEREE_USART_RX_BUF_LENGHT);
 
-  buzzer_play_eva();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in cmsis_os2.c) */

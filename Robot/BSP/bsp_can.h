@@ -2,8 +2,8 @@
  * @file: bsp_can.h
  * @author: Shiki
  * @date: 2025.7.12
- * @brief:	哨兵2025赛季CAN总线支持包，除了不同task和电机的CAN接收和发送函数，此文件还定义了大疆电机can接收结构体和达妙电机结构体。
-
+ * @brief:	哨兵2025赛季CAN通讯支持包
+ * 此文件定义了大疆电机can接收的数据结构体和达妙电机结构体，并对外提供机器人各个机构的电机结构体实例。
  *****************************************************************************************************************************/
 
 #ifndef BSP_CAN_H
@@ -13,14 +13,19 @@
 #include "pid.h"
 #include "can.h"
 
-#define SHOOT_CAN hcan2
-#define GIMBAL_CAN hcan1
-#define CHASSIS_CAN hcan1
-#define DM4310_SendID 0x01
+#define GIMBAL_PITCH_DM_SendID 0x01
 
-#define TX_QUEUE_SIZE 64
+typedef enum
+{
+	CAN_CHASSIS_CMD,
+	CAN_GIMBAL_YAW_CMD,
+	CAN_GIMBAL_PITCH_CMD,
+	CAN_SHOOT_CMD,
+	CAN_CAP_CMD,
+} CAN_CMD_ID; // CAN发送命令类型,用于把不同的can消息送入对应消息队列统一发送
 
 #pragma pack(push, 1)
+
 typedef struct
 {
 	uint16_t ecd;
@@ -51,7 +56,7 @@ typedef struct
 
 	uint16_t target_pos;
 	int16_t target_vel;
-	float target_current;
+	volatile float target_current;
 	fp32 INS_speed;
 	fp32 INS_speed_set;
 	fp32 INS_speed_last;
@@ -68,19 +73,10 @@ typedef struct
 
 typedef struct
 {
-	uint8_t data[8];
 	CAN_TxHeaderTypeDef tx_header;
-} CanTxMsgTypeDef;
+	uint8_t data[8];
+} CanTxMsgTypeDef;   // CAN报文结构体，用于can发送队列中
 
-typedef struct
-{
-	CanTxMsgTypeDef can_msg_buffer[TX_QUEUE_SIZE];
-	uint8_t head;
-	uint8_t tail;
-	uint8_t element_number;
-} CanTxQueueTypeDef;
-
-extern void can_filter_init(void);
 
 extern motor_measure_t motor_measure_chassis[4];
 extern motor_measure_t motor_measure_gimbal[2];
@@ -88,14 +84,19 @@ extern motor_measure_t motor_measure_shoot[3];
 extern DM_motor_data_t DM_pitch_motor_data;
 extern int32_t dial_angle;
 
-void CAN_TxQueue_Push(CAN_TxHeaderTypeDef *pHeader, uint8_t *pData);
-void CAN_TxQueue_Init();
+void Can_Filter_Init(void);
+void Can_Buffer_Init(void);
+void Create_Can_Send_Queues(void);
+void Allocate_Can_Buffer(int16_t data1, int16_t data2, int16_t data3, int16_t data4, CAN_CMD_ID can_cmd_id); 
+void CAN_TX_TimerIRQHandler(void);
+void CAN_Resend_Timer_IRQHandler(void);
+void Ctrl_DM_Motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq);
+void enable_DM(uint8_t id, uint8_t ctrl_mode);
+void disable_DM(uint8_t id, uint8_t ctrl_mode);
+
 void CAN_Cap_CMD(float data1, float data2, float data3, float data4);
 void CAN_Chassis_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 void CAN_Gimbal_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
 void CAN_Shoot_CMD(int16_t motor1, int16_t motor2, int16_t motor3, int16_t motor4);
-void ctrl_motor(uint16_t id, float _pos, float _vel, float _KP, float _KD, float _torq);
-void enable_DM(uint8_t id, uint8_t ctrl_mode);
-void disable_DM(uint8_t id, uint8_t ctrl_mode);
 
 #endif

@@ -1,11 +1,11 @@
 /**
   ****************************(C) COPYRIGHT 2016 DJI****************************
   * @file       pid.c/h
-  * @brief      pidÊµï¿½Öºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½PIDï¿½ï¿½ï¿½ãº¯ï¿½ï¿½ï¿½ï¿½
-  * @note       
+  * @brief      pidÊµÏÖº¯Êı£¬°üÀ¨³õÊ¼»¯£¬PID¼ÆËãº¯Êı£¬ÇåÁãº¯Êı
+  * @note
   * @history
   *  Version    Date            Author          Modification
-  *  V1.0.0     Dec-26-2018     RM              1. ï¿½ï¿½ï¿½
+  *  V1.0.0     Dec-26-2018     RM              1. Íê³É
   *
   @verbatim
   ==============================================================================
@@ -24,80 +24,80 @@ enum PID_MODE
     PID_DELTA
 };
 
-#pragma pack(push, 1) //åˆ«æ”¹ï¼Œä¸ä¿¡ä½ è¯•è¯•
+#pragma pack(push, 1) //Ç¿ÖÆ1×Ö½Ú¶ÔÆë£¬±ğ¸Ä
 typedef struct
 {
-    uint8_t mode;
-    //PID ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-    fp32 Kp;
-    fp32 Ki;
-    fp32 Kd;
+  uint8_t mode;
+  // PID Èı²ÎÊı
+  fp32 Kp;
+  fp32 Ki;
+  fp32 Kd;
 
-    fp32 max_out;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-    fp32 max_iout; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  fp32 max_out;  // ×î´óÊä³ö
+  fp32 max_iout; // ×î´ó»ı·ÖÊä³ö
 
-    fp32 set;
-    fp32 fdb;
+  fp32 set;
+  fp32 fdb;
 
-    fp32 out;
-    fp32 Pout;
-    fp32 Iout;
-    fp32 Dout;
-    fp32 Dbuf[3];  //Î¢ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½Ò»ï¿½ï¿½ 2ï¿½ï¿½ï¿½Ï´ï¿½
-    fp32 error[3]; //ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½Ò»ï¿½ï¿½ 2ï¿½ï¿½ï¿½Ï´ï¿½
+  fp32 out;
+  fp32 Pout;
+  fp32 Iout;
+  fp32 Dout;
+  fp32 Dbuf[3];  // Î¢·ÖÏî 0×îĞÂ 1ÉÏÒ»´Î 2ÉÏÉÏ´Î
+  fp32 error[3]; // Îó²îÏî 0×îĞÂ 1ÉÏÒ»´Î 2ÉÏÉÏ´Î
 
 } pid_type_def;
 
-#pragma pack(pop)  //åˆ«æ”¹ï¼Œä¸ä¿¡ä½ è¯•è¯•
+#pragma pack(pop)  //ÕâĞĞÒ²±ğ¸Ä
 
 /**
-  * @brief          pid struct data init
-  * @param[out]     pid: PID struct data point
-  * @param[in]      mode: PID_POSITION: normal pid
-  *                 PID_DELTA: delta pid
-  * @param[in]      PID: 0: kp, 1: ki, 2:kd
-  * @param[in]      max_out: pid max out
-  * @param[in]      max_iout: pid max iout
-  * @retval         none
-  */
+ * @brief          pid struct data init
+ * @param[out]     pid: PID struct data point
+ * @param[in]      mode: PID_POSITION: normal pid
+ *                 PID_DELTA: delta pid
+ * @param[in]      PID: 0: kp, 1: ki, 2:kd
+ * @param[in]      max_out: pid max out
+ * @param[in]      max_iout: pid max iout
+ * @retval         none
+ */
 /**
-  * @brief          pid struct data init
-  * @param[out]     pid: PIDï¿½á¹¹ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
-  * @param[in]      mode: PID_POSITION:ï¿½ï¿½Í¨PID
-  *                 PID_DELTA: ï¿½ï¿½ï¿½PID
-  * @param[in]      PID: 0: kp, 1: ki, 2:kd
-  * @param[in]      max_out: pidï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-  * @param[in]      max_iout: pidï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-  * @retval         none
-  */
+ * @brief          pid struct data init
+ * @param[out]     pid: PID½á¹¹Êı¾İÖ¸Õë
+ * @param[in]      mode: PID_POSITION:ÆÕÍ¨PID
+ *                 PID_DELTA: ²î·ÖPID
+ * @param[in]      PID: 0: kp, 1: ki, 2:kd
+ * @param[in]      max_out: pid×î´óÊä³ö
+ * @param[in]      max_iout: pid×î´ó»ı·ÖÊä³ö
+ * @retval         none
+ */
 extern void PID_init(pid_type_def *pid, uint8_t mode, const fp32 PID[3], fp32 max_out, fp32 max_iout);
 
 /**
-  * @brief          pid calculate 
-  * @param[out]     pid: PID struct data point
-  * @param[in]      ref: feedback data 
-  * @param[in]      set: set point
-  * @retval         pid out
-  */
+ * @brief          pid calculate
+ * @param[out]     pid: PID struct data point
+ * @param[in]      ref: feedback data
+ * @param[in]      set: set point
+ * @retval         pid out
+ */
 /**
-  * @brief          pidï¿½ï¿½ï¿½ï¿½
-  * @param[out]     pid: PIDï¿½á¹¹ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
-  * @param[in]      ref: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-  * @param[in]      set: ï¿½è¶¨Öµ
-  * @retval         pidï¿½ï¿½ï¿½
-  */
+ * @brief          pid¼ÆËã
+ * @param[out]     pid: PID½á¹¹Êı¾İÖ¸Õë
+ * @param[in]      ref: ·´À¡Êı¾İ
+ * @param[in]      set: Éè¶¨Öµ
+ * @retval         pidÊä³ö
+ */
 extern fp32 PID_calc(pid_type_def *pid, fp32 ref, fp32 set);
 
 /**
-  * @brief          pid out clear
-  * @param[out]     pid: PID struct data point
-  * @retval         none
-  */
+ * @brief          pid out clear
+ * @param[out]     pid: PID struct data point
+ * @retval         none
+ */
 /**
-  * @brief          pid ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-  * @param[out]     pid: PIDï¿½á¹¹ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½
-  * @retval         none
-  */
+ * @brief          pid Êä³öÇå³ı
+ * @param[out]     pid: PID½á¹¹Êı¾İÖ¸Õë
+ * @retval         none
+ */
 extern void PID_clear(pid_type_def *pid);
 
 #endif

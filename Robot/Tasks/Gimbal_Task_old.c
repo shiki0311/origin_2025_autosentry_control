@@ -2,7 +2,7 @@
  * @file: 	Gimbal_Task.c
  * @author: Shiki
  * @date:	2025.6.18
- * @brief:	哨兵云台任务
+ * @brief:	哨兵云台任务，已弃用
  * @attention:
  ******************************************************************/
 #include "Gimbal_Task.h"
@@ -347,13 +347,13 @@ void Gimbal_Task(void const *argument)
         if (rc_ctrl.rc.s[1] == RC_SW_DOWN)
         {
             CAN_Gimbal_CMD(0, 0, 0, 0);
-            ctrl_motor(DM4310_SendID, 0, 0, 0, 0, 0);
+            Ctrl_DM_Motor(DM4310_SendID, 0, 0, 0, 0, 0);
             CAN_Shoot_CMD(0, 0, shoot_motor_3508[0].target_current, shoot_motor_3508[1].target_current);
         }
         else
         {
             CAN_Gimbal_CMD(gimbal_m6020[0].give_current, 0, 0, 0);
-            ctrl_motor(DM4310_SendID, 0, 0, 0, 0, DM_pitch_motor_data.target_current);
+            Ctrl_DM_Motor(DM4310_SendID, 0, 0, 0, 0, DM_pitch_motor_data.target_current);
             CAN_Shoot_CMD(0, shoot_m2006[0].target_current, shoot_motor_3508[0].target_current, shoot_motor_3508[1].target_current);
         }
 

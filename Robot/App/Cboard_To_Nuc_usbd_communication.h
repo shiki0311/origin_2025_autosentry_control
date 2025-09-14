@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * @file       Cboard_To_Nuc_usbd_communication.h
+ * @brief      ÏòÉÏÎ»»úNUC·¢ËÍÍÓÂÝÒÇ£¬²ÃÅÐÏµÍ³Êý¾Ý¡£½â°üÉÏÎ»»ú·¢ÏÂÀ´µÄ×ÔÃéºÍµ¼º½Êý¾Ý
+ * @note
+ * @history
+ *  Version    Date                 Author          Modification
+ *  V1.0usbd   October-28-2024		captainwu		1.transform to usbd
+ *  V2.0tim    2025-7               Shiki           2.´ÓÔÚfreertos task·¢ËÍÊý¾Ý¸ÄÎªÊ¹ÓÃ¶¨Ê±Æ÷ÖÐ¶Ï·¢ËÍÊý¾Ý
+ *****************************************************************************************/
+
 #ifndef NMANIFOLD_USBD_TASK_H
 #define NMANIFOLD_USBD_TASK_H
 
@@ -12,35 +22,18 @@
 
 #include "usbd_cdc_if.h"
 
-/****************************************ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?********************************************/
+/****************************************³£Á¿¶¨Òå¶Î********************************************/
 #define USBD_RX_BUF_LENGHT APP_RX_DATA_SIZE
 #define USBD_TX_BUF_LENGHT APP_TX_DATA_SIZE
 
-// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ID
-#define CMD_ID_AUTOAIM_DATA_RX 0x81 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ï¡ï¿½ï¿½Â£ï¿½
-// #define CMD_ID_IMU					0x11			//IMUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿?
-#define CMD_ID_AUTOAIM_DATA_TX 0x14 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
-#define CMD_ID_WORKING_MODE 0x15	// ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
-#define CMD_ID_DIAL_SWITCH 0x17		// ï¿½ï¿½ï¿½ë¿ªï¿½Ø£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
-#define CMD_ID_REFEREE_DATA_TX 0x18 // ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½Í¸ï¿½ï¿½ï¿½ï¿½ ï¿½Ï£ï¿½
+// ÃüÁî×ÖID
+#define CMD_ID_AUTOAIM_DATA_RX 0x81 // ½ÓÊÕ×ÔÃéÊý¾Ý£¨ÉÏ>ÏÂ£©
+#define CMD_ID_AUTOAIM_DATA_TX 0x14 // ·¢ËÍ×ÔÃéÊý¾Ý£¨ÏÂ>ÉÏ£©
+#define CMD_ID_REFEREE_DATA_TX 0x18 // ·¢ËÍ²ÃÅÐÏµÍ³£¨ÏÂ>ÉÏ£©
 
-#define CMD_ID_MOVE_CMD_DATA_RX 0x82	 // ï¿½ï¿½ï¿½Õµï¿½ï¿½Ì¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define CMD_ID_ROTATE_DATA_RX 0x85		 // ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define CMD_ID_CHASSIA_GIMBAL_ANGLE 0X16 // ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì?ï¿½Ç¶È£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define CMD_ID_CHASSIS_DATA_TX 0x12		 // ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¼ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-
-// ï¿½ï¿½ï¿½Ý¶Î³ï¿½ï¿½È£ï¿½ï¿½ï¿½ï¿½Ö½ï¿½Îªï¿½ï¿½Î»
-// #define LENGTH_IMU							40			//IMUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ú±ï¿½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿?
-#define LENGTH_AUTOAIM_DATA_RX 34 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Ï¡ï¿½ï¿½Â£ï¿½
-#define LENGTH_AUTOAIM_DATA_TX 12 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½ 4+4+4+1
-#define LENGTH_DIAL_SWITCH 4	  // ï¿½ï¿½ï¿½ë¿ªï¿½Ø£ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
-#define LENGTH_WORKING_MODE 1	  // ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½Â¡ï¿½ï¿½Ï£ï¿½
-
-#define LENGTH_CHASSIS_GIMBAL_ANGLE 4 // ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì?ï¿½Ç¶È£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define LENGTH_CHASSIS_DATA_TX 24	  // ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¼ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Ï£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-#define LENGTH_REFEREE_DATA_TX 49	  // ï¿½ï¿½ï¿½Í¾ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½
-// #define LENGTH_move_cmd_DATA_RX    20      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ Ã»ï¿½Ãµï¿½
-#define LENGTH_NUC_DATA_RX 69 //	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½->ï¿½Â£ï¿½ï¿½ï¿½ï¿½Ú±ï¿½×¨ï¿½Ã£ï¿½ ï¿½ï¿½nucï¿½ï¿½ï¿½Ý´ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é£?
+// Êý¾Ý¶Î³¤¶È£¬ÒÔ×Ö½ÚÎªµ¥Î»
+#define LENGTH_AUTOAIM_DATA_TX 12 // ×ÔÃéËùÐèµÄÍÓÂÝÒÇµÄÊý¾Ý³¤¶È£¨3¸öfloat)
+#define LENGTH_REFEREE_DATA_TX 50 // ¾ö²ßËùÐèµÄ²ÃÅÐÏµÍ³Êý¾Ý³¤¶È
 
 /*******************************************END**********************************************/
 
@@ -50,32 +43,30 @@
 typedef struct
 {
 	uint8_t Header;								  // Ö¡Í·
-	uint8_t Length;								  // Ö¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¡Í·ï¿½ï¿½Ð£ï¿½ï¿½Î»ï¿½ï¿½
-	uint8_t Cmd_ID;								  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-} __attribute__((__packed__)) Protocol_Head_Data; // Í¨ï¿½ï¿½Ð­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	uint8_t Length;								  // Ö¡³¤£¨°üº¬Ö¡Í·ÓëÐ£ÑéÎ»£©
+	uint8_t Cmd_ID;								  // ÃüÁî×Ö
+} __attribute__((__packed__)) Protocol_Head_Data; // Í¨ÐÅÐ­ÒéÊý¾ÝÁ÷Ç°¶ÎÊý¾Ý
 
 typedef struct
 {
-	float Yaw;	 // ï¿½ï¿½Ç°yawï¿½ï¿½ï¿½ã£©
-	float Pitch; // ï¿½ï¿½Ç°pitchï¿½ï¿½ï¿½ã£©
-	float Roll;	 // ï¿½ï¿½Ç°Rollï¿½ï¿½ï¿½ã£©
-				 //	uint8_t Bullet_Speed;				//ï¿½Óµï¿½ï¿½ï¿½ï¿½Ù£ï¿½m/sï¿½ï¿½
-				 // uint8_t Robot_Team_Color;			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É?
+	float Yaw;	 // µ±Ç°yaw£¨¡ã£©
+	float Pitch; // µ±Ç°pitch£¨¡ã£©
+	float Roll;	 // µ±Ç°Roll£¨¡ã£©
 } __attribute__((__packed__)) AutoAim_Data_Tx;
 
 typedef struct
 {
-	uint16_t remain_HP; // Ê£ï¿½ï¿½Ñªï¿½ï¿½
-	uint16_t max_HP;	// ï¿½ï¿½Ñªï¿½ï¿½
+	uint16_t remain_HP;
+	uint16_t max_HP;
 
-	uint8_t game_progress;				// ï¿½ï¿½ï¿½ï¿½ï¿½×¶ï¿½
-	uint16_t stage_remain_time;			// ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½Ê±ï¿½ï¿½
-	uint16_t coin_remaining_num;		// Ê£ï¿½à¾­ï¿½ï¿½
-	uint16_t bullet_remaining_num_17mm; // Ê£ï¿½à·¢ï¿½ï¿½ï¿½ï¿½
+	uint8_t game_progress;
+	uint16_t stage_remain_time;
+	uint16_t coin_remaining_num;
+	uint16_t bullet_remaining_num_17mm;
 
-	uint16_t red_1_HP; // Ë«ï¿½ï¿½Ñªï¿½ï¿½
+	uint16_t red_1_HP;
 	uint16_t red_2_HP;
-	uint16_t red_3_HP; // Ñªï¿½ï¿½
+	uint16_t red_3_HP;
 	uint16_t red_4_HP;
 	uint16_t red_7_HP;
 	uint16_t red_outpost_HP;
@@ -89,11 +80,11 @@ typedef struct
 	uint16_t blue_outpost_HP;
 	uint16_t blue_base_HP;
 
-	uint32_t rfid_status; // rfidÉ¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	uint32_t rfid_status;
 	uint32_t event_data;
 	uint8_t hurt_reason;
-	uint8_t enemy_hero_position;
-
+	uint8_t enemy_hero_position; // µÐ·½Ó¢ÐÛËùÔÚÇøÓòµÄ±àºÅ
+	bool_t defend_fortress;		 // ÊÇ·ñÒª»Ø·ÀÈëÇÖÎÒ·½±¤ÀÝµÄµÐÈË
 } __attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
 
@@ -110,284 +101,20 @@ typedef struct
 	float rotate;
 	float yaw_speed;
 	float pitch_speed;
-	bool_t uphill_flag;
-	bool_t yaw_rotate_flag;
+	bool_t uphill_flag;		 // ÊÇ·ñÕýÔÚÉÏÆÂ
+	bool_t yaw_rotate_flag;	 // ÊÇ·ñÒª½øÐÐ´ó»Ø»·
+	bool_t ready_catch_hero; // ÊÇ·ñµ½´ï×¥Ó¢ÐÛµÄµãÎ»
 } __attribute__((__packed__)) AutoAim_Data_Rx;
 
 /*******************************************END**********************************************/
 
 #pragma pack(pop)
 
-// ï¿½ï¿½ï¿½ï¿½Ó¿ï¿?
 extern AutoAim_Data_Rx AutoAim_Data_Receive;
-extern uint8_t Referee_Buffer[2][512];
-extern uint16_t LENTH_REFEREE_BUF;
+extern uint8_t yaw_rotate_flag_last; // ¼ÇÂ¼ÉÏÒ»´ÎµÄyaw_rotate_flag£¬ÓÃÓÚÅÐ¶Ïµ±Ç°ÊÇ²»ÊÇ¸Õ¸ÕÍË³ö´ó»Ø»·Ä£Ê½
 
-// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len);
-uint8_t NUC_Data_Unpack(void);
-void NUC_USBD_Tx(uint8_t cmdid);
-void NUC_TX_IRQCallback(TIM_HandleTypeDef *htim);
+void NUC_TX_Autoaim(TIM_HandleTypeDef *htim);
+void NUC_TX_Referee(TIM_HandleTypeDef *htim);
 uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len);
-
-// 8Î»ï¿½æ±¾CRCï¿½ï¿½
-static const uint8_t CRC08_Table[256] = {
-	0x00,
-	0x5e,
-	0xbc,
-	0xe2,
-	0x61,
-	0x3f,
-	0xdd,
-	0x83,
-	0xc2,
-	0x9c,
-	0x7e,
-	0x20,
-	0xa3,
-	0xfd,
-	0x1f,
-	0x41,
-	0x9d,
-	0xc3,
-	0x21,
-	0x7f,
-	0xfc,
-	0xa2,
-	0x40,
-	0x1e,
-	0x5f,
-	0x01,
-	0xe3,
-	0xbd,
-	0x3e,
-	0x60,
-	0x82,
-	0xdc,
-	0x23,
-	0x7d,
-	0x9f,
-	0xc1,
-	0x42,
-	0x1c,
-	0xfe,
-	0xa0,
-	0xe1,
-	0xbf,
-	0x5d,
-	0x03,
-	0x80,
-	0xde,
-	0x3c,
-	0x62,
-	0xbe,
-	0xe0,
-	0x02,
-	0x5c,
-	0xdf,
-	0x81,
-	0x63,
-	0x3d,
-	0x7c,
-	0x22,
-	0xc0,
-	0x9e,
-	0x1d,
-	0x43,
-	0xa1,
-	0xff,
-	0x46,
-	0x18,
-	0xfa,
-	0xa4,
-	0x27,
-	0x79,
-	0x9b,
-	0xc5,
-	0x84,
-	0xda,
-	0x38,
-	0x66,
-	0xe5,
-	0xbb,
-	0x59,
-	0x07,
-	0xdb,
-	0x85,
-	0x67,
-	0x39,
-	0xba,
-	0xe4,
-	0x06,
-	0x58,
-	0x19,
-	0x47,
-	0xa5,
-	0xfb,
-	0x78,
-	0x26,
-	0xc4,
-	0x9a,
-	0x65,
-	0x3b,
-	0xd9,
-	0x87,
-	0x04,
-	0x5a,
-	0xb8,
-	0xe6,
-	0xa7,
-	0xf9,
-	0x1b,
-	0x45,
-	0xc6,
-	0x98,
-	0x7a,
-	0x24,
-	0xf8,
-	0xa6,
-	0x44,
-	0x1a,
-	0x99,
-	0xc7,
-	0x25,
-	0x7b,
-	0x3a,
-	0x64,
-	0x86,
-	0xd8,
-	0x5b,
-	0x05,
-	0xe7,
-	0xb9,
-	0x8c,
-	0xd2,
-	0x30,
-	0x6e,
-	0xed,
-	0xb3,
-	0x51,
-	0x0f,
-	0x4e,
-	0x10,
-	0xf2,
-	0xac,
-	0x2f,
-	0x71,
-	0x93,
-	0xcd,
-	0x11,
-	0x4f,
-	0xad,
-	0xf3,
-	0x70,
-	0x2e,
-	0xcc,
-	0x92,
-	0xd3,
-	0x8d,
-	0x6f,
-	0x31,
-	0xb2,
-	0xec,
-	0x0e,
-	0x50,
-	0xaf,
-	0xf1,
-	0x13,
-	0x4d,
-	0xce,
-	0x90,
-	0x72,
-	0x2c,
-	0x6d,
-	0x33,
-	0xd1,
-	0x8f,
-	0x0c,
-	0x52,
-	0xb0,
-	0xee,
-	0x32,
-	0x6c,
-	0x8e,
-	0xd0,
-	0x53,
-	0x0d,
-	0xef,
-	0xb1,
-	0xf0,
-	0xae,
-	0x4c,
-	0x12,
-	0x91,
-	0xcf,
-	0x2d,
-	0x73,
-	0xca,
-	0x94,
-	0x76,
-	0x28,
-	0xab,
-	0xf5,
-	0x17,
-	0x49,
-	0x08,
-	0x56,
-	0xb4,
-	0xea,
-	0x69,
-	0x37,
-	0xd5,
-	0x8b,
-	0x57,
-	0x09,
-	0xeb,
-	0xb5,
-	0x36,
-	0x68,
-	0x8a,
-	0xd4,
-	0x95,
-	0xcb,
-	0x29,
-	0x77,
-	0xf4,
-	0xaa,
-	0x48,
-	0x16,
-	0xe9,
-	0xb7,
-	0x55,
-	0x0b,
-	0x88,
-	0xd6,
-	0x34,
-	0x6a,
-	0x2b,
-	0x75,
-	0x97,
-	0xc9,
-	0x4a,
-	0x14,
-	0xf6,
-	0xa8,
-	0x74,
-	0x2a,
-	0xc8,
-	0x96,
-	0x15,
-	0x4b,
-	0xa9,
-	0xf7,
-	0xb6,
-	0xe8,
-	0x0a,
-	0x54,
-	0xd7,
-	0x89,
-	0x6b,
-	0x35,
-};
 
 #endif

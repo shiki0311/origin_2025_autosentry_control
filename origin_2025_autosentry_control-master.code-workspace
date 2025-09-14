@@ -30,7 +30,17 @@
 			"usart.h": "c",
 			"cboard_to_nuc_usbd_communication.h": "c",
 			"detect_task.h": "c",
-			"bsp_cap.h": "c"
+			"bsp_cap.h": "c",
+			"task.h": "c",
+			"arm_math.h": "c",
+			"remote_control.h": "c",
+			"timer_send_task.h": "c",
+			"can_send.h": "c",
+			"can.h": "c",
+			"stm32f4xx_hal_can.h": "c",
+			"stm32f4xx_hal_def.h": "c",
+			"stdint.h": "c",
+			"bsp_dwt.h": "c"
 		},
 		"files.encoding": "gb2312"
 	}

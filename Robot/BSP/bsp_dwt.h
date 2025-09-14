@@ -1,9 +1,9 @@
 /**
  ******************************************************************************
  * @file	bsp_dwt.h
- * @author  Wang Hongxi
- * @version V1.1.0
- * @date    2022/3/8
+ * @author  Wang Hongxi(modified by Shiki)
+ * @version V2.0.0
+ * @date    2025/9/13
  * @brief
  ******************************************************************************
  * @attention
@@ -16,6 +16,8 @@
 #include "main.h"
 #include "stdint.h"
 
+#define  CPU_FREQ_MHZ 168
+
 typedef struct
 {
     uint32_t s;
@@ -25,11 +27,18 @@ typedef struct
 
 
 /**
- * @brief 初始化DWT,传入参数为CPU频率,单位MHz
+ * @brief 初始化并开启DWT,传入参数为CPU频率,单位MHz
  * 
  * @param CPU_Freq_mHz c板为168MHz,A板为180MHz
  */
 uint8_t DWT_Init(uint32_t CPU_Freq_mHz);
+
+/**
+ * @brief 失能DWT并置零相关全局变量
+ *
+ * @param none
+ */
+void DWT_DeInit(void);
 
 /**
  * @brief 获取两次调用之间的时间间隔,单位为秒/s
@@ -69,13 +78,13 @@ float DWT_GetTimeline_ms(void);
 uint64_t DWT_GetTimeline_us(void);
 
 /**
- * @brief DWT延时函数,单位为秒/s
+ * @brief DWT延时函数,单位为毫秒/ms
  * @attention 该函数不受中断是否开启的影响,可以在临界区和关闭中断时使用
  * @note 禁止在__disable_irq()和__enable_irq()之间使用HAL_Delay()函数,应使用本函数
- * 
- * @param Delay 延时时间,单位为秒/s
+ *
+ * @param Delay 延时时间,单位为毫秒/ms
  */
-void DWT_Delay(float Delay);
+void DWT_Delay_ms(float Delay_ms);
 
 /**
  * @brief DWT更新时间轴函数,会被三个timeline函数调用

@@ -5,6 +5,15 @@
 #define TIM4_ARR 21000
 
 extern TIM_HandleTypeDef htim4;
+
+typedef struct
+{
+    uint16_t freq;
+    uint16_t duration; // 持续时间（ms）
+    uint16_t pwm;
+
+} Melody_TypeDef;
+
 void buzzer_on(uint16_t freq, uint16_t pwm)
 {
     uint16_t psc = (TIM_CLK/(freq*TIM4_ARR))-1;

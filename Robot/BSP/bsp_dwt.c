@@ -2,9 +2,9 @@
  ******************************************************************************
  * @file	bsp_dwt.c
  * @author  Wang Hongxi
- * @author modified by Neo with annotation
- * @version V1.1.0
- * @date    2022/3/8
+ * @author modified by Shiki
+ * @version V2.0.0
+ * @date    2025/9/13
  * @brief
  */
 
@@ -20,7 +20,7 @@ static osMutexId DWT_MUTEX;
 
 /**
  * @brief 私有函数,用于检查DWT CYCCNT寄存器是否溢出,并更新CYCCNT_RountCount
- * @attention 此函数假设两次调用之间的时间间隔不超过一次溢出
+ * @attention 此函数假设两次调用之间的时间间隔不超过一次溢出,需要保证函数调用的间隔小于一次溢出时间
  *
  */
 static void DWT_CNT_Update(void)
@@ -64,6 +64,33 @@ uint8_t DWT_Init(uint32_t CPU_Freq_mHz)
 			return 1; /*clock cycle counter not started*/
 		}
 
+}
+
+void DWT_DeInit(void)
+{
+    // 1. 关闭 CYCCNT 计数器（停止计数）
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; // 清除 CYCCNTENA 位（bit0）
+
+    // 2. 关闭 DWT 模块总使能（停止 DWT 外设时钟）
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // 清除 TRCENA 位（bit24）
+
+    // 3. 若使用 RTOS 互斥锁，释放互斥锁资源（避免内存泄漏）
+    if (DWT_MUTEX != NULL)
+    {
+        osMutexDelete(DWT_MUTEX); // 删除互斥锁
+        DWT_MUTEX = NULL;
+    }
+
+    // 4. 重置全局变量（可选，根据需求决定是否清零状态）
+    CPU_FREQ_Hz = 0;
+    CPU_FREQ_Hz_ms = 0;
+    CPU_FREQ_Hz_us = 0;
+    CYCCNT_RountCount = 0;
+    CYCCNT_LAST = 0;
+    CYCCNT64 = 0;
+    SysTime.s = 0;
+    SysTime.ms = 0;
+    SysTime.us = 0;
 }
 
 float DWT_GetDeltaT(uint32_t *cnt_last)
@@ -131,12 +158,19 @@ uint64_t DWT_GetTimeline_us(void)
     return DWT_Timelinef32;
 }
 
-void DWT_Delay(float Delay)
+void DWT_Delay_ms(float Delay_ms)
 {
-    uint32_t tickstart = DWT->CYCCNT;
-    float wait = Delay;
+    if (Delay_ms <= 0.0f)
+        return;
 
-    while ((DWT->CYCCNT - tickstart) < wait * (float)CPU_FREQ_Hz)
+    float start_ms = DWT_GetTimeline_ms();
+
+    float target_ms = start_ms + Delay_ms;
+
+    while (1)
     {
+        float current_ms = DWT_GetTimeline_ms();
+        if (current_ms >= target_ms)
+            break;
     }
 }
